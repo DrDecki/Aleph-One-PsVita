@@ -108,6 +108,9 @@ Feb 13, 2003 (Woody Zenfell):
     Try a mass-search for "player_behavior" to find the areas affected.
 */
 
+#ifdef __vita__
+#include <psp2/kernel/processmgr.h>
+#endif
 #include "cseries.h" // sorry ryan, nov. 4
 #include <array>
 #include <string.h>
@@ -1006,6 +1009,14 @@ void update_interface_display(
 
 	data= get_screen_data(game_state.state);
 	
+#ifdef __vita__
+	if (game_state.state == _display_main_menu) {
+		static short _ls = -999, _lh = -999;
+		bool _chg = (game_state.current_screen != _ls || game_state.highlighted_main_menu_item != _lh || interface_fade_in_progress);
+		if (!_chg) return;
+		_ls = game_state.current_screen; _lh = game_state.highlighted_main_menu_item;
+	}
+#endif
 	/* Use this to avoid the fade.. */
 	draw_full_screen_pict_resource_from_images(data->screen_base+game_state.current_screen);
 
@@ -1137,7 +1148,13 @@ bool idle_game_state(uint64_t time)
 	{
 		// ZZZ change: update_world() whether or not get_keyboard_controller_status() is true
 		// This way we won't fill up queues and stall netgames if one player switches out for a bit.
+		#ifdef __vita__
+		unsigned int _uw_s = sceKernelGetProcessTimeLow();
+		#endif
 		std::pair<bool, int16> theUpdateResult= update_world();
+		#ifdef __vita__
+		{ static unsigned int _ut=0,_uc=0,_ul=0; _ut+=sceKernelGetProcessTimeLow()-_uw_s; _uc++; unsigned int _n=sceKernelGetProcessTimeLow(); if(_n-_ul>1000000){ FILE*_l=fopen("ux0:/uw.txt","a"); if(_l){fprintf(_l,"update_world: %u us avg, %u/sec\n",_uc?_ut/_uc:0,_uc);fclose(_l);} _ut=0;_uc=0;_ul=_n; } }
+		#endif
 		short ticks_elapsed= theUpdateResult.second;
 		bool redraw = false;
 
