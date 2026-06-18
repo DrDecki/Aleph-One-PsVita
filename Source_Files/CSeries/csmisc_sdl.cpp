@@ -25,6 +25,9 @@
  */
 
 #include "cseries.h"
+#ifdef __vita__
+#include <psp2/kernel/threadmgr.h>
+#endif
 
 #include <chrono>
 #include <thread>
@@ -53,7 +56,11 @@ uint64_t machine_tick_count(void)
 
 void sleep_for_machine_ticks(uint32 ticks)
 {
+#ifdef __vita__
+	sceKernelDelayThread(ticks * TIME_SKEW * 1000);  // Vita: native microsecond delay
+#else
 	std::this_thread::sleep_for(std::chrono::milliseconds(ticks*TIME_SKEW));
+#endif
 }
 
 /*

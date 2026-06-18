@@ -1,0 +1,32 @@
+CMakeFiles/alephone.dir/home/maximilian/alephone/Source_Files/vita_init.c.obj: \
+ /home/maximilian/alephone/Source_Files/vita_init.c \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/processmgr.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/vitasdk/build_utils.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2common/kernel/processmgr.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2common/types.h \
+ /usr/local/vitasdk/lib/gcc/arm-vita-eabi/15.2.0/include/stddef.h \
+ /usr/local/vitasdk/lib/gcc/arm-vita-eabi/15.2.0/include/stdint.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/stdint.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/machine/_default_types.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/sys/features.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/_newlib_version.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/bits/posix_opt.h \
+ /usr/local/vitasdk/lib/gcc/arm-vita-eabi/15.2.0/include/limits.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/sys/_intsup.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/sys/_stdint.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/callback.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/types.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2common/kernel/threadmgr.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/cond.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/eventflag.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/lw_cond.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/lw_mutex.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/msgpipe.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/mutex.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/rwlock.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/semaphore.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/signal.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/thread.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/cpu.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/kernel/threadmgr/vfp.h

@@ -100,10 +100,7 @@ dnl Check for boost functions and libraries.
 AX_BOOST_BASE([1.69.0],
               ,
               [AC_MSG_ERROR([You need Boost 1.69.0 or higher to build Aleph One.])])
-AX_BOOST_FILESYSTEM
-AS_IF([ test "x$BOOST_FILESYSTEM_LIB" != "x" ],
-      [ LIBS="$BOOST_FILESYSTEM_LIB $LIBS" ],
-      [AC_MSG_ERROR([You need the Boost::Filesystem library to run Aleph One.])])
+LIBS="-lboost_filesystem -lboost_system $LIBS"
       
 AC_DEFUN([AX_CHECK_BOOST_HEADER],
          [ AC_LANG_PUSH(C++)

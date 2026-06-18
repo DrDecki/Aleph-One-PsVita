@@ -174,12 +174,22 @@ char get_path_list_separator()
 static std::string _get_local_data_path()
 {
 	static std::string local_dir = "";
-	if (local_dir.empty())
-	{
-		const char *home = getenv("HOME");
-		if (home)
-			local_dir = std::string(home) + "/.alephone";
-	}
+        if (local_dir.empty())
+        {
+#ifdef __vita__
+                local_dir = "ux0:/data/AlephOne";
+#else
+                const char *home = getenv("HOME");
+                if (home)
+                        local_dir = std::string(home) + "/.alephone";
+#endif
+        }
+
+
+
+
+
+
 	return local_dir;
 }
 
@@ -194,7 +204,9 @@ std::string get_data_path(CSPathType type)
 			path = _get_local_data_path();
 			break;
 		case kPathDefaultData:
-#ifdef PKGDATADIR
+#ifdef __vita__
+                        path = "ux0:/data/AlephOne";
+#elif defined(PKGDATADIR)
 			path = PKGDATADIR;
 #endif
 			break;

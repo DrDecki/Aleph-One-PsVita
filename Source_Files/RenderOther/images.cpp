@@ -48,6 +48,7 @@ Jul 31, 2002 (Loren Petrich)
 
 #include <stdlib.h>
 #include <memory>
+#include <map>
 
 #include "interface.h"
 #include "shell.h"
@@ -1406,9 +1407,26 @@ void draw_full_screen_pict_resource_from_images(int pict_resource_number)
 	if (m1_draw_full_screen_pict_resource_from_images(pict_resource_number))
 		return;
     
+#ifdef __vita__
+    static std::map<int, std::shared_ptr<SDL_Surface> > _pic_cache;
+    auto _it = _pic_cache.find(pict_resource_number);
+    if (_it != _pic_cache.end()) {
+    	draw_picture_surface(_it->second);
+    	return;
+    }
+#endif
     LoadedResource PictRsrc;
     if (get_picture_resource_from_images(pict_resource_number, PictRsrc))
+#ifdef __vita__
+        {
+        	if (_pic_cache.size() > 12) _pic_cache.clear();
+        	auto _sp = std::shared_ptr<SDL_Surface>(picture_to_surface(PictRsrc).release(), SDL_FreeSurface);
+        	_pic_cache[pict_resource_number] = _sp;
+        	draw_picture_surface(_sp);
+        }
+#else
         draw_picture(PictRsrc);
+#endif
 }
 
 

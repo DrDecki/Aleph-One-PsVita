@@ -1031,6 +1031,13 @@ char* luai_alloc_getenv(const char* name) {
   return alloc_narrowed(wenv);
 }
 
+#elif defined(__vita__)
+FILE* luai_fopen(const char* path, const char* mode) { return fopen(path, mode); }
+FILE* luai_popen(const char* command, const char* mode) { return NULL; }
+int luai_system(const char* command) { return -1; }
+int luai_remove(const char* path) { return remove(path); }
+int luai_rename(const char* from, const char* to) { return rename(from, to); }
+char* luai_alloc_getenv(const char* name) { return NULL; }
 #else /* not __WIN32__ */
 
 FILE* luai_fopen(const char* path, const char* mode) { return fopen(path, mode); }

@@ -137,7 +137,7 @@ void HUD_Lua_Class::start_draw(void)
 		}
 		if (!m_surface)
 		{
-			m_surface = SDL_ConvertSurfaceFormat(MainScreenSurface(), SDL_PIXELFORMAT_BGRA8888, 0);
+			m_surface = SDL_ConvertSurfaceFormat(MainScreenSurface(), MainScreenSurface()->format->format, 0);
 			SDL_SetSurfaceBlendMode(m_surface, SDL_BLENDMODE_BLEND);
 		}
 		SDL_FillRect(m_surface, NULL, SDL_MapRGBA(m_surface->format, 0, 0, 0, 0));	

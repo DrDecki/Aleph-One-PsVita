@@ -241,6 +241,11 @@ void Screen::Initialize(screen_mode_data* mode)
 			common_modes.push_back(std::pair<int, int>(640, 480));
 			common_modes.push_back(std::pair<int, int>(480, 240));
 			common_modes.push_back(std::pair<int, int>(320, 160));
+#ifdef __vita__
+			common_modes.push_back(std::pair<int, int>(960, 544));
+			common_modes.push_back(std::pair<int, int>(640, 362));
+			common_modes.push_back(std::pair<int, int>(480, 272));
+#endif
 			
 			for (std::vector<std::pair<int, int> >::const_iterator it = common_modes.begin(); it != common_modes.end(); ++it)
 			{
@@ -2067,11 +2072,30 @@ void DrawSurface(SDL_Surface *s, SDL_Rect &dest_rect, SDL_Rect &src_rect)
 	if (s) {
 		SDL_Rect new_src_rect = {src_rect.x, src_rect.y, src_rect.w, src_rect.h};
 		SDL_Surface *surface = s;
+#ifdef __vita__
+		bool keep = false;
+#endif
 		if (dest_rect.w != src_rect.w || dest_rect.h != src_rect.h)
 		{
 			double x_scale = dest_rect.w / (double) src_rect.w;
 			double y_scale = dest_rect.h / (double) src_rect.h;
+#ifdef __vita__
+			int _sw = static_cast<int>(s->w * x_scale);
+			int _sh = static_cast<int>(s->h * y_scale);
+			if (s == Intro_Buffer || s == Intro_Buffer_corrected) {
+				static SDL_Surface* _mc = NULL; static SDL_Surface* _ms = NULL; static int _mw = 0, _mh = 0;
+				if (!_mc || _ms != s || _mw != _sw || _mh != _sh || intro_buffer_changed) {
+					if (_mc) SDL_FreeSurface(_mc);
+					_mc = rescale_surface(s, _sw, _sh);
+					_ms = s; _mw = _sw; _mh = _sh;
+				}
+				surface = _mc; keep = true;
+			} else {
+				surface = rescale_surface(s, _sw, _sh);
+			}
+#else
 			surface = rescale_surface(s, static_cast<int>(s->w * x_scale), static_cast<int>(s->h * y_scale));
+#endif
 			new_src_rect.x = static_cast<Sint16>(new_src_rect.x * x_scale);
 			new_src_rect.y = static_cast<Sint16>(new_src_rect.y * y_scale);
 			new_src_rect.w = static_cast<Uint16>(new_src_rect.w * x_scale);
@@ -2081,7 +2105,11 @@ void DrawSurface(SDL_Surface *s, SDL_Rect &dest_rect, SDL_Rect &src_rect)
 		if (!Screen::instance()->lua_hud() || (get_game_state() != _game_in_progress))
 			MainScreenUpdateRects(1, &dest_rect);
 		
+#ifdef __vita__
+		if (surface != s && !keep)
+#else
 		if (surface != s)
+#endif
 			SDL_FreeSurface(surface);
 	}
 }

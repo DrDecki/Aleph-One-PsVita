@@ -42,7 +42,8 @@ April 22, 2003 (Woody Zenfell):
 #include <tchar.h>
 #include <shellapi.h>
 #include <shlobj.h>
-#else
+
+#elif !defined(__vita__)
 #include <sys/wait.h>
 #endif
 
@@ -53,6 +54,16 @@ April 22, 2003 (Woody Zenfell):
 #ifdef __MACOSX__
 extern void system_alert_user(const char*, short);
 extern bool system_alert_choose_scenario(char *chosen_dir);
+
+#elif defined(__vita__)
+void system_alert_user(const char* message, short severity)
+{
+	fprintf(stderr, "%s: %s\n", severity == infoError ? "INFO" : "FATAL", message);
+}
+bool system_alert_choose_scenario(char *chosen_dir)
+{
+	return false;
+}
 #else
 void system_alert_user(const char* message, short severity)
 {
@@ -64,7 +75,8 @@ void system_alert_user(const char* message, short severity)
 		type = MB_ICONERROR|MB_OK;
 	}
 	MessageBoxW(NULL, utf8_to_wide(message).c_str(), severity == infoError ? L"Warning" : L"Error", type);
-#else
+
+#elif !defined(__vita__)
 	fprintf(stderr, "%s: %s\n", severity == infoError ? "INFO" : "FATAL", message);
 #endif	
 }
@@ -114,12 +126,19 @@ bool system_alert_choose_scenario(char *chosen_dir)
 
 #ifdef __MACOSX__
 extern void system_launch_url_in_browser(const char *url);
+
+#elif defined(__vita__)
+void system_launch_url_in_browser(const char *url)
+{
+	// Not supported on PS Vita
+}
 #else
 void system_launch_url_in_browser(const char *url)
 {
 #if defined(__WIN32__)
 	ShellExecuteW(NULL, L"open", utf8_to_wide(url).c_str(), NULL, NULL, SW_SHOWNORMAL);
-#else
+
+#elif !defined(__vita__)
 	pid_t pid = fork();
 	if (pid == 0)
 	{

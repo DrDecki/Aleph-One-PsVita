@@ -23,6 +23,9 @@
  *  shell.cpp - Main game loop and input handling
  */
 
+#ifdef __vita__
+#include <psp2/kernel/processmgr.h>
+#endif
 #include "cseries.h"
 
 #include "map.h"
@@ -233,6 +236,9 @@ void initialize_application(void)
 #endif
 
 	// Initialize SDL
+#ifdef __vita__
+	SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
+#endif
 	int retval = SDL_Init(SDL_INIT_VIDEO |
 						  (shell_options.nosound ? 0 : SDL_INIT_AUDIO) |
 						  (shell_options.nojoystick ? 0 : SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER) |
@@ -788,7 +794,13 @@ void main_event_loop(void)
 		}
 
 		execute_timer_tasks(machine_tick_count());
+		#ifdef __vita__
+		unsigned int _idle_s = sceKernelGetProcessTimeLow();
+		#endif
 		idle_game_state(machine_tick_count());
+		#ifdef __vita__
+		{ static unsigned int _it=0,_ic=0,_last=0; _it+=sceKernelGetProcessTimeLow()-_idle_s; _ic++; unsigned int _now=sceKernelGetProcessTimeLow(); if(_now-_last>1000000){ FILE*_l=fopen("ux0:/idle.txt","a"); if(_l){fprintf(_l,"idle: %u us avg, %u/sec\n",_ic?_it/_ic:0,_ic);fclose(_l);} _it=0;_ic=0;_last=_now; } }
+		#endif
 
 		auto fps_target = get_fps_target();
 		if (!get_keyboard_controller_status())
@@ -796,7 +808,7 @@ void main_event_loop(void)
 			fps_target = 30;
 		}
 	
-		if (game_state == _game_in_progress && fps_target != 0)
+		if (false)  // Vita TEST: limiter off
 		{
 			int elapsed_machine_ticks = machine_tick_count() - cur_time;
 			int desired_elapsed_machine_ticks = MACHINE_TICKS_PER_SECOND / fps_target;
