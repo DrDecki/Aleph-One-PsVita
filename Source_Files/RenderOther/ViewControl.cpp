@@ -188,7 +188,13 @@ bool View_AdjustFOV(float& FOV, float FOV_Target)
 
 // Indicates whether to fix the horizontal or the vertical field-of-view angle
 // (default: fix vertical FOV angle)
-bool View_FOV_FixHorizontalNotVertical() {return get_screen_mode()->fix_h_not_v;}
+bool View_FOV_FixHorizontalNotVertical() {
+#ifdef __vita__
+	return false;  // echtes Widescreen: horizontales FOV erweitern statt strecken
+#else
+	return get_screen_mode()->fix_h_not_v;
+#endif
+}
 
 // Landscape stuff: this is for being able to return a pointer to the default one
 static LandscapeOptions DefaultLandscape;
