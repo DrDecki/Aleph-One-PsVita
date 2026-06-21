@@ -167,4 +167,9 @@ CMakeFiles/alephone.dir/home/maximilian/alephone/Source_Files/main.cpp.obj: \
  /home/maximilian/alephone/cmake-build/../Source_Files/CSeries/cstypes.h \
  /home/maximilian/alephone/cmake-build/../Source_Files/Misc/Logging.h \
  /home/maximilian/alephone/cmake-build/../Source_Files/Misc/alephversion.h \
- /usr/local/vitasdk/arm-vita-eabi/include/SDL2/SDL_main.h
+ /usr/local/vitasdk/arm-vita-eabi/include/SDL2/SDL_main.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/power.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2common/power.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/vitasdk/build_utils.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2common/types.h \
+ /usr/local/vitasdk/arm-vita-eabi/include/psp2/types.h

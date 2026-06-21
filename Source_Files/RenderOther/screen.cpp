@@ -316,11 +316,19 @@ float Screen::pixel_scale()
 
 int Screen::window_height()
 {
+#ifdef __vita__
+	if (in_game && main_surface)
+		return main_surface->h;
+#endif
 	return std::max(static_cast<short>(480), screen_mode.height);
 }
 
 int Screen::window_width()
 {
+#ifdef __vita__
+	if (in_game && main_surface)
+		return main_surface->w;
+#endif
 	return std::max(static_cast<short>(640), screen_mode.width);
 }
 
@@ -797,9 +805,11 @@ static bool need_mode_change(int window_width, int window_height,
 	if (!hasgl) {
 		int w, h;
 		SDL_RenderGetLogicalSize(main_render, &w, &h);
+#ifndef __vita__
 		if (w != log_width || h != log_height) {
 			SDL_RenderSetLogicalSize(main_render, log_width, log_height);
 		}
+#endif
 	}
 
 	// force rebuild of main_surface and/or main_texture, if necessary
@@ -1072,7 +1082,9 @@ static void change_screen_mode(int width, int height, int depth, bool nogl, bool
 		if (!main_render) {
 			main_render = SDL_CreateRenderer(main_screen, -1, 0);
 			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+#ifndef __vita__
 			SDL_RenderSetLogicalSize(main_render, vmode_width, vmode_height);
+#endif
 			main_texture = SDL_CreateTexture(main_render, pixel_format_32.format, SDL_TEXTUREACCESS_STREAMING, vmode_width, vmode_height);
 		} else if (!main_texture) {
 			main_texture = SDL_CreateTexture(main_render, pixel_format_32.format, SDL_TEXTUREACCESS_STREAMING, vmode_width, vmode_height);
@@ -1170,8 +1182,13 @@ void change_screen_mode(struct screen_mode_data *mode, bool redraw, bool resize_
 
 	// "Redraw" change now and clear the screen
 	if (redraw) {
+#ifdef __vita__
+		short w = mode->width;
+		short h = (short)((int)mode->width * 544 / 960);
+#else
 		short w = std::max(mode->width, static_cast<short>(640));
 		short h = std::max(mode->height, static_cast<short>(480));
+#endif
 		if (!in_game)
 		{
 			w = 640;
@@ -1191,8 +1208,13 @@ void change_screen_mode(short screentype)
 {
 	struct screen_mode_data *mode = &screen_mode;
 	
+#ifdef __vita__
+	short w = mode->width;
+	short h = (short)((int)mode->width * 544 / 960);
+#else
 	short w = std::max(mode->width, static_cast<short>(640));
 	short h = std::max(mode->height, static_cast<short>(480));
+#endif
 	if (screentype == _screentype_menu)
 	{
 		w = 640;
@@ -2317,10 +2339,16 @@ void MainScreenUpdateRect(int x, int y, int w, int h)
 void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 {
 	SDL_UpdateTexture(main_texture, NULL, main_surface->pixels, main_surface->pitch);
+#ifdef __vita__
+	SDL_RenderClear(main_render);
+	SDL_RenderCopy(main_render, main_texture, NULL, NULL);
+	SDL_RenderPresent(main_render);
+#else
 	SDL_RenderClear(main_render);
 	SDL_RenderCopy(main_render, main_texture, NULL, NULL);
 //	for (size_t i = 0; i < count; ++i) {
 //		SDL_RenderCopy(main_render, main_texture, &rects[i], &rects[i]);
 //	}
 	SDL_RenderPresent(main_render);
+#endif
 }

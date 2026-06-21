@@ -162,7 +162,7 @@ void Image_Blitter::Draw(SDL_Surface *dst_surface, const Image_Rect& dst, const 
     if (!m_disp_surface || (dst_surface && m_disp_surface->format->format != dst_surface->format->format))
     {
         if (m_disp_surface) SDL_FreeSurface(m_disp_surface);
-		m_disp_surface = SDL_ConvertSurface(m_surface, dst_surface->format, 0);
+		m_disp_surface = SDL_ConvertSurfaceFormat(m_surface, SDL_PIXELFORMAT_ARGB8888, 0);
         if (!m_disp_surface)
             return;
     }
@@ -186,6 +186,7 @@ void Image_Blitter::Draw(SDL_Surface *dst_surface, const Image_Rect& dst, const 
   
 	SDL_Rect ssrc = { int(src.x), int(src.y), int(src.w), int(src.h) };
 	SDL_Rect sdst = { int(dst.x), int(dst.y), int(dst.w), int(dst.h) };
+	SDL_SetSurfaceBlendMode(src_surface, SDL_BLENDMODE_BLEND);
 	SDL_BlitSurface(src_surface, &ssrc, dst_surface, &sdst);
 }
 

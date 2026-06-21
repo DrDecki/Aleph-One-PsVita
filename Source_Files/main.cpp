@@ -4,9 +4,18 @@
 #include "Logging.h"
 #include "alephversion.h"
 #include <SDL2/SDL_main.h>
+#ifdef __vita__
+#include <psp2/power.h>
+#endif
 
 int main(int argc, char** argv)
 {
+#ifdef __vita__
+	scePowerSetArmClockFrequency(444);
+	scePowerSetBusClockFrequency(222);
+	scePowerSetGpuClockFrequency(222);
+	scePowerSetGpuXbarClockFrequency(166);
+#endif
 	// Print banner (don't bother if this doesn't appear when started from a GUI)
 	char app_name_version[256];
 	expand_app_variables(app_name_version, "Aleph One $appLongVersion$");
