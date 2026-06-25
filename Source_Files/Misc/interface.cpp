@@ -1148,11 +1148,11 @@ bool idle_game_state(uint64_t time)
 	{
 		// ZZZ change: update_world() whether or not get_keyboard_controller_status() is true
 		// This way we won't fill up queues and stall netgames if one player switches out for a bit.
-		#ifdef __vita__
+		#ifdef VITA_PERF_LOG
 		unsigned int _uw_s = sceKernelGetProcessTimeLow();
 		#endif
 		std::pair<bool, int16> theUpdateResult= update_world();
-		#ifdef __vita__
+		#ifdef VITA_PERF_LOG
 		{ static unsigned int _ut=0,_uc=0,_ul=0; _ut+=sceKernelGetProcessTimeLow()-_uw_s; _uc++; unsigned int _n=sceKernelGetProcessTimeLow(); if(_n-_ul>1000000){ FILE*_l=fopen("ux0:/uw.txt","a"); if(_l){fprintf(_l,"update_world: %u us avg, %u/sec\n",_uc?_ut/_uc:0,_uc);fclose(_l);} _ut=0;_uc=0;_ul=_n; } }
 		#endif
 		short ticks_elapsed= theUpdateResult.second;

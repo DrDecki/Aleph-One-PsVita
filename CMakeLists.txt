@@ -38,4 +38,12 @@ target_link_libraries(alephone
     -Wl,--end-group
 )
 vita_create_self(eboot.bin alephone UNSAFE)
-vita_create_vpk(alephone-vita.vpk ALPH00001 eboot.bin VERSION "01.00" NAME "Aleph One")
+vita_create_vpk(alephone-vita.vpk ALPH00001 eboot.bin
+  VERSION "01.00"
+  NAME "Aleph One"
+  FILE
+    ${CMAKE_SOURCE_DIR}/sce_sys/icon0.png sce_sys/icon0.png
+    ${CMAKE_SOURCE_DIR}/sce_sys/livearea/contents/bg0.png sce_sys/livearea/contents/bg0.png
+    ${CMAKE_SOURCE_DIR}/sce_sys/livearea/contents/startup.png sce_sys/livearea/contents/startup.png
+    ${CMAKE_SOURCE_DIR}/sce_sys/livearea/contents/template.xml sce_sys/livearea/contents/template.xml
+)

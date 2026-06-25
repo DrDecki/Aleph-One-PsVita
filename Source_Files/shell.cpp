@@ -794,11 +794,11 @@ void main_event_loop(void)
 		}
 
 		execute_timer_tasks(machine_tick_count());
-		#ifdef __vita__
+		#ifdef VITA_PERF_LOG
 		unsigned int _idle_s = sceKernelGetProcessTimeLow();
 		#endif
 		idle_game_state(machine_tick_count());
-		#ifdef __vita__
+		#ifdef VITA_PERF_LOG
 		{ static unsigned int _it=0,_ic=0,_last=0; _it+=sceKernelGetProcessTimeLow()-_idle_s; _ic++; unsigned int _now=sceKernelGetProcessTimeLow(); if(_now-_last>1000000){ FILE*_l=fopen("ux0:/idle.txt","a"); if(_l){fprintf(_l,"idle: %u us avg, %u/sec\n",_ic?_it/_ic:0,_ic);fclose(_l);} _it=0;_ic=0;_last=_now; } }
 		#endif
 
