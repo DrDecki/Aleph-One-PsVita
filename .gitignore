@@ -34,3 +34,22 @@ lib*.a
 /*.tar.bz2
 
 .vscode/
+
+# Vita CMake build artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.vpk
+*.velf
+*.self
+eboot.bin
+param.sfo
+/cmake-build/
+sce_sys/param.sfo
+
+# Weitere VPK-Zwischendateien
+*.vpk.out
+*.vpk_param.sfo
+*.out
+alephone-vita/
+vpk-folder/

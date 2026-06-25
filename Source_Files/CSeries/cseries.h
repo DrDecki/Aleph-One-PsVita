@@ -25,6 +25,9 @@
 #ifndef _CSERIES
 #define _CSERIES
 
+// Vita Performance-Logging: einkommentieren zum Aktivieren der ux0:/*.txt Diagnose-Logs
+// #define VITA_PERF_LOG
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #else

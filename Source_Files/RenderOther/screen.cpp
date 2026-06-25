@@ -87,6 +87,16 @@ static SDL_Texture *main_texture;
 // The HUD has a separate buffer.
 // It is initialized to NULL so as to allow its initing to be lazy.
 SDL_Surface *world_pixels = NULL;
+#ifdef __vita__
+SDL_Texture *world_texture = NULL;
+static int world_tex_w = 0, world_tex_h = 0;
+static Uint32 world_tex_fmt = 0;
+static SDL_Surface *vita_world_src = NULL;
+static bool vita_gpu_upscale_active = false;
+static SDL_Rect vita_hud_dirty = {0,0,0,0};
+static bool vita_hud_dirty_valid = false;
+static bool vita_top_clean = false;
+#endif
 SDL_Surface *world_pixels_corrected = NULL;
 SDL_Surface *HUD_Buffer = NULL;
 SDL_Surface *Term_Buffer = NULL;
@@ -1091,7 +1101,11 @@ static void change_screen_mode(int width, int height, int depth, bool nogl, bool
 		}
 	}
 	if (!main_surface) {
+#ifdef __vita__
+		main_surface = SDL_CreateRGBSurface(SDL_SWSURFACE, vmode_width, vmode_height, 32, pixel_format_32.Rmask, pixel_format_32.Gmask, pixel_format_32.Bmask, 0xFF000000);
+#else
 		main_surface = SDL_CreateRGBSurface(SDL_SWSURFACE, vmode_width, vmode_height, 32, pixel_format_32.Rmask, pixel_format_32.Gmask, pixel_format_32.Bmask, 0);
+#endif
 	}
 #ifdef MUST_RELOAD_VIEW_CONTEXT
 	if (!nogl && screen_mode.acceleration != _no_acceleration) 
@@ -1294,6 +1308,12 @@ void update_world_view_camera()
 
 extern bool is_network_pregame;
 
+#ifdef __vita__
+static double g_pf_up=0, g_pf_hud=0; static int g_pf_fc=0;
+static int g_diag_full=0, g_diag_hud=0; static double g_diag_fill_ms=0;
+static double g_pf_3d=0;
+static int g_diag_us_hirez=0, g_diag_us_else=0, g_diag_us_skip=0;
+#endif
 void render_screen(short ticks_elapsed)
 {
 	// Make whatever changes are necessary to the world_view structure based on whichever player is frontmost
@@ -1405,12 +1425,42 @@ void render_screen(short ticks_elapsed)
 		BufferRect.w >>= 1;
 		BufferRect.h >>= 1;
 	}
+#ifdef __vita__
+	{
+		const float _vita_3d_scale = 0.9f;
+		int _bw = (int)(BufferRect.w * _vita_3d_scale);
+		int _bh = (int)(BufferRect.h * _vita_3d_scale);
+		_bw &= ~1; _bh &= ~1;
+		if (_bw < 2) _bw = 2;
+		if (_bh < 2) _bh = 2;
+		BufferRect.w = _bw; BufferRect.h = _bh;
+		if (world_pixels && (world_pixels->w != _bw || world_pixels->h != _bh))
+			ViewChangedSize = true;
+	}
+#endif
 
 	// Set up view data appropriately
 	world_view->screen_width = BufferRect.w;
 	world_view->screen_height = BufferRect.h;
 	world_view->standard_screen_width = 2 * BufferRect.h;
 	initialize_view_data(world_view);
+#ifdef VITA_PERF_LOG
+	{
+		static int _geo_fc = 0;
+		if ((++_geo_fc % 120) == 0) {
+			FILE *_gf = fopen("ux0:/geo.txt", "w");
+			if (_gf) {
+				fprintf(_gf, "ViewRect: %d x %d\n", ViewRect.w, ViewRect.h);
+				fprintf(_gf, "BufferRect: %d x %d\n", BufferRect.w, BufferRect.h);
+				fprintf(_gf, "world_view screen: %d x %d\n", world_view->screen_width, world_view->screen_height);
+				if (world_pixels) fprintf(_gf, "world_pixels: %d x %d\n", world_pixels->w, world_pixels->h);
+				else fprintf(_gf, "world_pixels: NULL\n");
+				fprintf(_gf, "HighResolution: %d\n", (int)HighResolution);
+				fclose(_gf);
+			}
+		}
+	}
+#endif
 
 	bool update_full_screen = false;
 	if (ViewChangedSize || MapChangedSize || SwitchedModes) {
@@ -1468,7 +1518,13 @@ void render_screen(short ticks_elapsed)
 		software_render_dest = bitmap_definition_of_sdl_surface(world_pixels);
 	
 	// Render world view
+#ifdef __vita__
+	Uint64 _pf3a = SDL_GetPerformanceCounter();
 	render_view(world_view, software_render_dest.get());
+	g_pf_3d += (double)(SDL_GetPerformanceCounter()-_pf3a)/SDL_GetPerformanceFrequency()*1000.0;
+#else
+	render_view(world_view, software_render_dest.get());
+#endif
 
     // clear Lua drawing from previous frame
     // (SDL is slower if we do this before render_view)
@@ -1560,7 +1616,11 @@ void render_screen(short ticks_elapsed)
 		// Update world window
 		if (!world_view->terminal_mode_active &&
 			(!world_view->overhead_map_active || MapIsTranslucent))
+#ifdef __vita__
+			{ Uint64 _pfua = SDL_GetPerformanceCounter(); update_screen(BufferRect, ViewRect, HighResolution, DrawEveryOtherLine); g_pf_up += (double)(SDL_GetPerformanceCounter()-_pfua)/SDL_GetPerformanceFrequency()*1000.0; }
+#else
 			update_screen(BufferRect, ViewRect, HighResolution, DrawEveryOtherLine);
+#endif
 		
 		// Update map
 		if (world_view->overhead_map_active) {
@@ -1571,7 +1631,32 @@ void render_screen(short ticks_elapsed)
 		// Update HUD
 		if (Screen::instance()->lua_hud())
 		{
+#ifdef VITA_PERF_LOG
+			Uint64 _pfha = SDL_GetPerformanceCounter();
 			Lua_DrawHUD(ticks_elapsed);
+			g_pf_hud += (double)(SDL_GetPerformanceCounter()-_pfha)/SDL_GetPerformanceFrequency()*1000.0;
+			if (++g_pf_fc >= 120) {
+				FILE *_pf2 = fopen("ux0:/perf2.txt", "w");
+				if (_pf2) { fprintf(_pf2, "Upscale(update_screen): %.2f ms\n", g_pf_up/g_pf_fc); fprintf(_pf2, "HUD(Lua_DrawHUD): %.2f ms\n", g_pf_hud/g_pf_fc); fprintf(_pf2, "3D-Render(render_view): %.2f ms\n", g_pf_3d/g_pf_fc); fclose(_pf2); }
+				FILE *_df = fopen("ux0:/diag.txt", "w");
+				if (_df) {
+					int _dt = g_diag_full + g_diag_hud;
+					fprintf(_df, "GPU-Frames gesamt: %d\n", _dt);
+					fprintf(_df, "  Voll-Clear-Pfad:  %d\n", g_diag_full);
+					fprintf(_df, "  HUD-Clear-Pfad:   %d\n", g_diag_hud);
+					fprintf(_df, "FillRect gesamt:   %.2f ms ueber %d Frames\n", g_diag_fill_ms, _dt);
+					fprintf(_df, "FillRect pro Frame: %.3f ms\n", _dt>0 ? g_diag_fill_ms/_dt : 0.0);
+					fprintf(_df, "update_screen hi_rez: %d\n", g_diag_us_hirez);
+					fprintf(_df, "update_screen else:   %d\n", g_diag_us_else);
+					fclose(_df);
+				}
+				g_diag_full=g_diag_hud=0; g_diag_fill_ms=0;
+				g_diag_us_hirez=g_diag_us_else=g_diag_us_skip=0;
+				g_pf_up=g_pf_hud=0; g_pf_fc=0; g_pf_3d=0;
+			}
+#else
+			Lua_DrawHUD(ticks_elapsed);
+#endif
 		}
 		else if (HUD_RenderRequest) {
 			SDL_Rect src_rect = { 0, 320, 640, 160 };
@@ -1743,12 +1828,45 @@ static void update_screen(SDL_Rect &source, SDL_Rect &destination, bool hi_rez, 
 		s = world_pixels_corrected;
 	}
 		
+#ifdef __vita__
+	if (false) // Vita: immer GPU-Upscale-Pfad, nie direkter Blit
+#else
 	if (hi_rez) 
+#endif
 	{
+		g_diag_us_hirez++;
 		SDL_BlitSurface(s, NULL, main_surface, &destination);
 	} 
 	else 
 	{
+		g_diag_us_else++;
+#ifdef __vita__
+		if (s && s->format->BytesPerPixel >= 2) {
+			vita_world_src = s;
+			SDL_Rect _hud = Screen::instance()->hud_rect();
+			_hud.x = 0; _hud.w = main_surface->w;
+			if (_hud.x < 0) { _hud.w += _hud.x; _hud.x = 0; }
+			if (_hud.y < 0) { _hud.h += _hud.y; _hud.y = 0; }
+			if (_hud.x + _hud.w > main_surface->w) _hud.w = main_surface->w - _hud.x;
+			if (_hud.y + _hud.h > main_surface->h) _hud.h = main_surface->h - _hud.y;
+			Uint64 _dfs = SDL_GetPerformanceCounter();
+			if (!vita_top_clean) {
+				SDL_FillRect(main_surface, NULL, 0);
+				vita_top_clean = true;
+				vita_hud_dirty_valid = false;
+				g_diag_full++;
+			} else if (_hud.w > 0 && _hud.h > 0) {
+				SDL_FillRect(main_surface, &_hud, 0);
+				vita_hud_dirty = _hud; vita_hud_dirty_valid = true;
+				g_diag_hud++;
+			} else {
+				vita_hud_dirty_valid = false;
+			}
+			g_diag_fill_ms += (double)(SDL_GetPerformanceCounter()-_dfs)/SDL_GetPerformanceFrequency()*1000.0;
+			vita_gpu_upscale_active = true;
+			return;
+		}
+#endif
 		SDL_Surface* intermediary = 0;
 		if (SDL_MUSTLOCK(main_surface)) 
 		{
@@ -2143,6 +2261,18 @@ void draw_intro_screen(void)
 	
 	SDL_Rect src_rect = { 0, 0, Intro_Buffer->w, Intro_Buffer->h };
 	SDL_Rect dst_rect = { 0, 0, src_rect.w, src_rect.h};
+#ifdef VITA_PERF_LOG
+	{
+		FILE *_mf = fopen("ux0:/menu.txt", "w");
+		if (_mf) {
+			fprintf(_mf, "Intro_Buffer: %d x %d\n", Intro_Buffer->w, Intro_Buffer->h);
+			if (main_surface) fprintf(_mf, "main_surface: %d x %d\n", main_surface->w, main_surface->h);
+			fprintf(_mf, "src_rect: %d x %d\n", src_rect.w, src_rect.h);
+			fprintf(_mf, "dst_rect: %d x %d\n", dst_rect.w, dst_rect.h);
+			fclose(_mf);
+		}
+	}
+#endif
 	
 #ifdef HAVE_OPENGL
 	if (OGL_IsActive()) {
@@ -2338,17 +2468,113 @@ void MainScreenUpdateRect(int x, int y, int w, int h)
 }
 void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 {
-	SDL_UpdateTexture(main_texture, NULL, main_surface->pixels, main_surface->pitch);
 #ifdef __vita__
+	static Uint64 _pf_freq = SDL_GetPerformanceFrequency();
+	static Uint64 _pf_last = 0;
+	static double _pf_af=0,_pf_au=0,_pf_ac=0,_pf_ap=0; static int _pf_fc=0;
+	Uint64 _pf_fs = SDL_GetPerformanceCounter();
+	if (_pf_last) _pf_af += (double)(_pf_fs-_pf_last)/_pf_freq*1000.0;
+	bool _gpu = vita_gpu_upscale_active && vita_world_src;
+	if (!_gpu) vita_top_clean = false;
+#ifdef VITA_PERF_LOG
+	{
+		static int _gd = 0;
+		if ((++_gd % 120) == 0) {
+			FILE *_gf = fopen("ux0:/gpu.txt", "w");
+			if (_gf) {
+				fprintf(_gf, "gpu_active: %d\n", (int)vita_gpu_upscale_active);
+				fprintf(_gf, "world_src_null: %d\n", vita_world_src ? 0 : 1);
+				fprintf(_gf, "_gpu: %d\n", (int)_gpu);
+				if (vita_world_src) fprintf(_gf, "world_src: %d x %d\n", vita_world_src->w, vita_world_src->h);
+				fclose(_gf);
+			}
+		}
+	}
+#endif
+	Uint64 _pf_t0 = SDL_GetPerformanceCounter();
+	if (_gpu) {
+		Uint32 _wf = SDL_MasksToPixelFormatEnum(vita_world_src->format->BitsPerPixel, vita_world_src->format->Rmask, vita_world_src->format->Gmask, vita_world_src->format->Bmask, vita_world_src->format->Amask);
+		if (_wf == SDL_PIXELFORMAT_UNKNOWN) _wf = pixel_format_32.format;
+		if (!world_texture || world_tex_w != vita_world_src->w || world_tex_h != vita_world_src->h || world_tex_fmt != _wf) {
+			if (world_texture) SDL_DestroyTexture(world_texture);
+			world_texture = SDL_CreateTexture(main_render, _wf, SDL_TEXTUREACCESS_STREAMING, vita_world_src->w, vita_world_src->h);
+			world_tex_w = vita_world_src->w; world_tex_h = vita_world_src->h; world_tex_fmt = _wf;
+		}
+		SDL_SetTextureBlendMode(main_texture, SDL_BLENDMODE_BLEND);
+		SDL_UpdateTexture(world_texture, NULL, vita_world_src->pixels, vita_world_src->pitch);
+	}
+	if (_gpu && vita_hud_dirty_valid) {
+		Uint8 *_hp = (Uint8*)main_surface->pixels
+			+ vita_hud_dirty.y * main_surface->pitch
+			+ vita_hud_dirty.x * main_surface->format->BytesPerPixel;
+		SDL_UpdateTexture(main_texture, &vita_hud_dirty, _hp, main_surface->pitch);
+	} else {
+		SDL_UpdateTexture(main_texture, NULL, main_surface->pixels, main_surface->pitch);
+	}
+	Uint64 _pf_t1 = SDL_GetPerformanceCounter();
 	SDL_RenderClear(main_render);
-	SDL_RenderCopy(main_render, main_texture, NULL, NULL);
+#ifdef VITA_PERF_LOG
+	{
+		static int _geo2 = 0;
+		if (_gpu && (++_geo2 % 120) == 0) {
+			int _lw=0,_lh=0; SDL_RenderGetLogicalSize(main_render, &_lw, &_lh);
+			float _sx=0,_sy=0; SDL_RenderGetScale(main_render, &_sx, &_sy);
+			SDL_Rect _vp; SDL_RenderGetViewport(main_render, &_vp);
+			int _ow=0,_oh=0; SDL_GetRendererOutputSize(main_render, &_ow, &_oh);
+			FILE *_gf = fopen("ux0:/geo2.txt", "w");
+			if (_gf) {
+				fprintf(_gf, "LogicalSize: %d x %d\n", _lw, _lh);
+				fprintf(_gf, "Scale: %.3f x %.3f\n", _sx, _sy);
+				fprintf(_gf, "Viewport: %d,%d %dx%d\n", _vp.x, _vp.y, _vp.w, _vp.h);
+				fprintf(_gf, "OutputSize: %d x %d\n", _ow, _oh);
+				fprintf(_gf, "world_tex: %d x %d\n", world_tex_w, world_tex_h);
+				fclose(_gf);
+			}
+		}
+	}
+#endif
+	if (_gpu) SDL_RenderCopy(main_render, world_texture, NULL, NULL);
+	if (!_gpu && main_surface) {
+		int _ow=0, _oh=0; SDL_GetRendererOutputSize(main_render, &_ow, &_oh);
+		float _ar = (float)main_surface->w / (float)main_surface->h;
+		int _dw = _oh * _ar;
+		if (_dw > _ow) _dw = _ow;
+		int _dh = _oh;
+		if ((float)_ow / (float)_oh < _ar) { _dw = _ow; _dh = (int)(_ow / _ar); }
+		SDL_Rect _dst = { (_ow - _dw) / 2, (_oh - _dh) / 2, _dw, _dh };
+		SDL_RenderCopy(main_render, main_texture, NULL, &_dst);
+	} else {
+		SDL_RenderCopy(main_render, main_texture, NULL, NULL);
+	}
+#ifdef VITA_PERF_LOG
+	Uint64 _pf_t2 = SDL_GetPerformanceCounter();
+#endif
 	SDL_RenderPresent(main_render);
+#ifdef VITA_PERF_LOG
+	Uint64 _pf_t3 = SDL_GetPerformanceCounter();
+	_pf_au += (double)(_pf_t1-_pf_t0)/_pf_freq*1000.0;
+	_pf_ac += (double)(_pf_t2-_pf_t1)/_pf_freq*1000.0;
+	_pf_ap += (double)(_pf_t3-_pf_t2)/_pf_freq*1000.0;
+	_pf_last = SDL_GetPerformanceCounter();
+	if (++_pf_fc >= 120) {
+		FILE *_pf_f = fopen("ux0:/perf.txt", "w");
+		if (_pf_f) {
+			double _pf_ft = _pf_af/_pf_fc;
+			fprintf(_pf_f, "FRAME GESAMT: %.2f ms = %.1f FPS\n", _pf_ft, _pf_ft>0?1000.0/_pf_ft:0.0);
+			fprintf(_pf_f, "  Upload(UpdateTexture): %.2f ms\n", _pf_au/_pf_fc);
+			fprintf(_pf_f, "  RenderClear+Copy(GPU): %.2f ms\n", _pf_ac/_pf_fc);
+			fprintf(_pf_f, "  Present/VSync: %.2f ms\n", _pf_ap/_pf_fc);
+			fprintf(_pf_f, "  REST(3D+HUD): %.2f ms\n", (_pf_af-_pf_au-_pf_ac-_pf_ap)/_pf_fc);
+			fclose(_pf_f);
+		}
+		_pf_af=_pf_au=_pf_ac=_pf_ap=0; _pf_fc=0;
+	}
+#endif
+	vita_gpu_upscale_active = false;
 #else
+	SDL_UpdateTexture(main_texture, NULL, main_surface->pixels, main_surface->pitch);
 	SDL_RenderClear(main_render);
 	SDL_RenderCopy(main_render, main_texture, NULL, NULL);
-//	for (size_t i = 0; i < count; ++i) {
-//		SDL_RenderCopy(main_render, main_texture, &rects[i], &rects[i]);
-//	}
 	SDL_RenderPresent(main_render);
 #endif
 }

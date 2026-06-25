@@ -1,6 +1,0 @@
-/home/maximilian/alephone/CMakeFiles/alephone.dir
-/home/maximilian/alephone/CMakeFiles/alephone-velf.dir
-/home/maximilian/alephone/CMakeFiles/eboot.bin-self.dir
-/home/maximilian/alephone/CMakeFiles/alephone-vita.vpk-vpk.dir
-/home/maximilian/alephone/CMakeFiles/edit_cache.dir
-/home/maximilian/alephone/CMakeFiles/rebuild_cache.dir

@@ -21,6 +21,7 @@ HUD_RENDERER_LUA.CPP
 */
 
 #include "HUDRenderer_Lua.h"
+#include <stdio.h>
 
 #include "FontHandler.h"
 #include "Image_Blitter.h"
@@ -44,6 +45,20 @@ extern bool MotionSensorActive;
 // Rendering object
 static HUD_Lua_Class HUD_Lua;
 
+#ifdef __vita__
+static SDL_Rect g_hud_dirty = {0,0,0,0};
+static bool g_hud_dirty_valid = false;
+static void hud_mark_dirty(const SDL_Rect &r) {
+	if (r.w <= 0 || r.h <= 0) return;
+	if (!g_hud_dirty_valid) { g_hud_dirty = r; g_hud_dirty_valid = true; return; }
+	int x0 = g_hud_dirty.x < r.x ? g_hud_dirty.x : r.x;
+	int y0 = g_hud_dirty.y < r.y ? g_hud_dirty.y : r.y;
+	int x1 = (g_hud_dirty.x+g_hud_dirty.w) > (r.x+r.w) ? (g_hud_dirty.x+g_hud_dirty.w) : (r.x+r.w);
+	int y1 = (g_hud_dirty.y+g_hud_dirty.h) > (r.y+r.h) ? (g_hud_dirty.y+g_hud_dirty.h) : (r.y+r.h);
+	g_hud_dirty.x = x0; g_hud_dirty.y = y0; g_hud_dirty.w = x1-x0; g_hud_dirty.h = y1-y0;
+}
+#endif
+
 
 HUD_Lua_Class *Lua_HUDInstance()
 {
@@ -52,10 +67,36 @@ HUD_Lua_Class *Lua_HUDInstance()
 
 void Lua_DrawHUD(short time_elapsed)
 {
+#ifdef VITA_PERF_LOG
+	static double _h_ms=0, _h_sd=0, _h_dr=0; static int _h_fc=0;
+	Uint64 _hf = SDL_GetPerformanceFrequency();
+	Uint64 _t0 = SDL_GetPerformanceCounter();
+	HUD_Lua.update_motion_sensor(time_elapsed);
+	Uint64 _t1 = SDL_GetPerformanceCounter();
+	HUD_Lua.start_draw();
+	Uint64 _t2 = SDL_GetPerformanceCounter();
+	L_Call_HUDDraw();
+	Uint64 _t3 = SDL_GetPerformanceCounter();
+	HUD_Lua.end_draw();
+	_h_ms += (double)(_t1-_t0)/_hf*1000.0;
+	_h_sd += (double)(_t2-_t1)/_hf*1000.0;
+	_h_dr += (double)(_t3-_t2)/_hf*1000.0;
+	if (++_h_fc >= 120) {
+		FILE *_hfp = fopen("ux0:/hud.txt", "w");
+		if (_hfp) {
+			fprintf(_hfp, "motion_sensor: %.2f ms\n", _h_ms/_h_fc);
+			fprintf(_hfp, "start_draw(Clear): %.2f ms\n", _h_sd/_h_fc);
+			fprintf(_hfp, "L_Call_HUDDraw(Blits): %.2f ms\n", _h_dr/_h_fc);
+			fclose(_hfp);
+		}
+		_h_ms=_h_sd=_h_dr=0; _h_fc=0;
+	}
+#else
 	HUD_Lua.update_motion_sensor(time_elapsed);
 	HUD_Lua.start_draw();
 	L_Call_HUDDraw();
 	HUD_Lua.end_draw();
+#endif
 }
 
 /*
@@ -140,7 +181,21 @@ void HUD_Lua_Class::start_draw(void)
 			m_surface = SDL_ConvertSurfaceFormat(MainScreenSurface(), SDL_PIXELFORMAT_ARGB8888, 0);
 			SDL_SetSurfaceBlendMode(m_surface, SDL_BLENDMODE_BLEND);
 		}
+#ifdef __vita__
+		if (g_hud_dirty_valid) {
+			SDL_Rect _c = g_hud_dirty;
+			if (_c.x < 0) { _c.w += _c.x; _c.x = 0; }
+			if (_c.y < 0) { _c.h += _c.y; _c.y = 0; }
+			if (_c.x + _c.w > m_surface->w) _c.w = m_surface->w - _c.x;
+			if (_c.y + _c.h > m_surface->h) _c.h = m_surface->h - _c.y;
+			if (_c.w > 0 && _c.h > 0) SDL_FillRect(m_surface, &_c, SDL_MapRGBA(m_surface->format, 0, 0, 0, 0));
+		} else {
+			SDL_FillRect(m_surface, NULL, SDL_MapRGBA(m_surface->format, 0, 0, 0, 0));
+		}
+		g_hud_dirty_valid = false;
+#else
 		SDL_FillRect(m_surface, NULL, SDL_MapRGBA(m_surface->format, 0, 0, 0, 0));	
+#endif
 	}
 	
 	
@@ -306,6 +361,9 @@ void HUD_Lua_Class::fill_rect(float x, float y, float w, float h,
 		SDL_FillRect(m_surface, &rect,
 								 SDL_MapRGBA(m_surface->format, static_cast<unsigned char>(r * 255), static_cast<unsigned char>(g * 255), static_cast<unsigned char>(b * 255), static_cast<unsigned char>(a * 255)));
 		SDL_BlitSurface(m_surface, &rect, MainScreenSurface(), &rect);
+#ifdef __vita__
+		hud_mark_dirty(rect);
+#endif
 		SDL_SetClipRect(MainScreenSurface(), NULL);
 	}
 }	
@@ -336,24 +394,36 @@ void HUD_Lua_Class::frame_rect(float x, float y, float w, float h,
 		rect.h = static_cast<Uint16>(t);
 		SDL_FillRect(m_surface, &rect, color);
 		SDL_BlitSurface(m_surface, &rect, MainScreenSurface(), &rect);
+#ifdef __vita__
+		hud_mark_dirty(rect);
+#endif
 		rect.x = static_cast<Sint16>(x) + m_wr.x;
 		rect.w = static_cast<Uint16>(w);
 		rect.y = static_cast<Sint16>(y + h - t) + m_wr.y;
 		rect.h = static_cast<Uint16>(t);
 		SDL_FillRect(m_surface, &rect, color);
 		SDL_BlitSurface(m_surface, &rect, MainScreenSurface(), &rect);
+#ifdef __vita__
+		hud_mark_dirty(rect);
+#endif
 		rect.x = static_cast<Sint16>(x) + m_wr.x;
 		rect.w = static_cast<Uint16>(t);
 		rect.y = static_cast<Sint16>(y + t) + m_wr.y;
 		rect.h = static_cast<Uint16>(h - t - t);
 		SDL_FillRect(m_surface, &rect, color);
 		SDL_BlitSurface(m_surface, &rect, MainScreenSurface(), &rect);
+#ifdef __vita__
+		hud_mark_dirty(rect);
+#endif
 		rect.x = static_cast<Sint16>(x + w - t) + m_wr.x;
 		rect.w = static_cast<Uint16>(t);
 		rect.y = static_cast<Sint16>(y + t) + m_wr.y;
 		rect.h = static_cast<Uint16>(h - t - t);
 		SDL_FillRect(m_surface, &rect, color);
 		SDL_BlitSurface(m_surface, &rect, MainScreenSurface(), &rect);
+#ifdef __vita__
+		hud_mark_dirty(rect);
+#endif
 		SDL_SetClipRect(MainScreenSurface(), NULL);
 	}
 }	
@@ -434,6 +504,9 @@ void HUD_Lua_Class::draw_text(FontSpecifier *font, const char *text,
                                               static_cast<unsigned char>(a * 255)),
                                   font->Style);
             SDL_BlitSurface(m_surface, &rect, MainScreenSurface(), &rect);
+#ifdef __vita__
+            hud_mark_dirty(rect);
+#endif
 			SDL_SetClipRect(MainScreenSurface(), NULL);
         }
 	}
@@ -456,6 +529,9 @@ void HUD_Lua_Class::draw_image(Image_Blitter *image, float x, float y)
         r.y += m_wr.y;
     }
 	image->Draw(MainScreenSurface(), r);
+#ifdef __vita__
+	{ SDL_Rect _ir = { (int)r.x, (int)r.y, (int)r.w, (int)r.h }; hud_mark_dirty(_ir); }
+#endif
 	SDL_SetClipRect(MainScreenSurface(), NULL);
 }
 
@@ -486,6 +562,9 @@ void HUD_Lua_Class::draw_shape(Shape_Blitter *shape, float x, float y)
         r.x += m_wr.x;
         r.y += m_wr.y;
         shape->SDL_Draw(MainScreenSurface(), r);
+#ifdef __vita__
+        { SDL_Rect _sr = { (int)r.x, (int)r.y, (int)r.w, (int)r.h }; hud_mark_dirty(_sr); }
+#endif
 		SDL_SetClipRect(MainScreenSurface(), NULL);
     }
 }

@@ -46,6 +46,9 @@ public:
 	TitleScreenFinder(ScenarioChooserScenario& scenario) : FileFinder(), scenario_{scenario} { }
 	virtual bool found(FileSpecifier& file)
 	{
+#ifdef VITA_PERF_LOG
+		{ FILE *_cf = fopen("ux0:/chooser.txt", "a"); if (_cf) { fprintf(_cf, "found: %s\n", file.GetPath()); fclose(_cf); } }
+#endif
 		if (boost::algorithm::ends_with(file.GetPath(), ".imgA"))
 		{
 			auto full_size = find_title_screen(file);
@@ -164,9 +167,15 @@ bool ScenarioChooserScenario::load(const std::string& path)
 
 void ScenarioChooserScenario::find_image()
 {
+#ifdef VITA_PERF_LOG
+	{ FILE *_cf = fopen("ux0:/chooser.txt", "a"); if (_cf) { fprintf(_cf, "find_image path=%s\n", path.c_str()); fclose(_cf); } }
+#endif
 	TitleScreenFinder finder(*this);
 	FileSpecifier f(path);
 	finder.Find(f, WILDCARD_TYPE, true);
+#ifdef VITA_PERF_LOG
+	{ FILE *_cf = fopen("ux0:/chooser.txt", "a"); if (_cf) { fprintf(_cf, "find_image result: %s\n", image ? "OK" : "NULL"); fclose(_cf); } }
+#endif
 }
 
 ScenarioChooser::ScenarioChooser() :
@@ -507,6 +516,15 @@ void ScenarioChooser::move_selection(int col_delta, int row_delta)
 
 void ScenarioChooser::optimize_image(ScenarioChooserScenario& scenario, SDL_Window* window)
 {
+#ifdef VITA_PERF_LOG
+	{ FILE *_cf = fopen("ux0:/opt.txt", "a"); if (_cf) {
+		SDL_Surface *_ws = SDL_GetWindowSurface(window);
+		fprintf(_cf, "window_surface: %s\n", _ws ? "OK" : "NULL");
+		fprintf(_cf, "image: %s  %dx%d\n", scenario.image.get()?"OK":"NULL", scenario.image.get()?scenario.image->w:0, scenario.image.get()?scenario.image->h:0);
+		fprintf(_cf, "title_screen: %d x %d  scenario: %d x %d\n", title_screen_width, title_screen_height, scenario_width, scenario_height);
+		fclose(_cf);
+	} }
+#endif
 	auto format = SDL_GetWindowSurface(window)->format;
 	SurfacePtr optimized(SDL_ConvertSurface(scenario.image.get(), format, 0), SDL_FreeSurface);
 
@@ -522,7 +540,9 @@ void ScenarioChooser::optimize_image(ScenarioChooserScenario& scenario, SDL_Wind
 
 	SDL_FillRect(scenario.image.get(), nullptr, SDL_MapRGB(scenario.image->format, 0, 0, 0));
 
-#if SDL_VERSION_ATLEAST(2, 0, 16)
+#ifdef __vita__
+	SDL_BlitScaled(optimized.get(), &src_rect, scenario.image.get(), &dst_rect);
+#elif SDL_VERSION_ATLEAST(2, 0, 16)
 	SDL_SoftStretchLinear(optimized.get(), &src_rect, scenario.image.get(), &dst_rect);
 #else
 	SDL_BlitScaled(optimized.get(), &src_rect, scenario.image.get(), &dst_rect);
