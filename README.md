@@ -1,6 +1,7 @@
 # Installing on Vita
 
 Get the official Scenarios from the Aleph One Website and put them into ux0:/data/AlephOne/
+(Download)
 
 # Aleph One
 
