@@ -1,3 +1,7 @@
+# Installing on Vita
+
+Get the official Scenarios from the Aleph One Website and put them into ux0:/data/AlephOne/
+
 # Aleph One
 
 Aleph One is the open source continuation of Bungie™’s _Marathon® 2_ and _Marathon Infinity_ game engines. Aleph One plays _Marathon_, _Marathon 2_, _Marathon Infinity_, and third-party content on a variety of platforms.
