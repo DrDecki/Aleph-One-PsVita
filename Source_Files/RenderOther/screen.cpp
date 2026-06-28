@@ -1427,7 +1427,9 @@ void render_screen(short ticks_elapsed)
 	}
 #ifdef __vita__
 	{
-		const float _vita_3d_scale = 0.9f;
+		// Vita: getrennte Render-Skalierung fuer Low/High.
+		// High = scharfer Mittelweg (720x408 GPU-hochskaliert), Low = nahezu nativ.
+		const float _vita_3d_scale = HighResolution ? 0.70f : 1.0f;
 		int _bw = (int)(BufferRect.w * _vita_3d_scale);
 		int _bh = (int)(BufferRect.h * _vita_3d_scale);
 		_bw &= ~1; _bh &= ~1;
@@ -1823,10 +1825,14 @@ static inline bool pixel_formats_equal(SDL_PixelFormat* a, SDL_PixelFormat* b)
 static void update_screen(SDL_Rect &source, SDL_Rect &destination, bool hi_rez, bool every_other_line)
 {
 	SDL_Surface *s = world_pixels;
+#ifndef __vita__
+	// Vita: teure Pro-Pixel-Gammakorrektur ueberspringen (kostet ~37ms/Frame
+	// bei Nicht-Standard-Gamma). Bild bleibt auf Standard-Gamma.
 	if (!using_default_gamma && bit_depth > 8) {
 		apply_gamma(world_pixels, world_pixels_corrected);
 		s = world_pixels_corrected;
 	}
+#endif
 		
 #ifdef __vita__
 	if (false) // Vita: immer GPU-Upscale-Pfad, nie direkter Blit
@@ -2294,7 +2300,15 @@ void draw_intro_screen(void)
 #endif
 	{
 		SDL_Surface *s = Intro_Buffer;
+#ifdef __vita__
+		// Vita: Gammakorrektur nur waehrend eines aktiven Fades anwenden.
+		// Sonst laeuft sie wegen der Helligkeitseinstellung dauernd und
+		// laesst die statischen Menues ruckeln. Waehrend des Fades ist sie
+		// noetig, damit der Ein-/Ausblend-Effekt smooth bleibt.
+		if (!using_default_gamma && (!fade_finished() || intro_buffer_changed)) {
+#else
 		if (!using_default_gamma) {
+#endif
 			apply_gamma(Intro_Buffer, Intro_Buffer_corrected);
 			SDL_SetSurfaceBlendMode(Intro_Buffer_corrected, SDL_BLENDMODE_NONE);
 			s = Intro_Buffer_corrected;
@@ -2528,6 +2542,9 @@ void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 				fprintf(_gf, "Viewport: %d,%d %dx%d\n", _vp.x, _vp.y, _vp.w, _vp.h);
 				fprintf(_gf, "OutputSize: %d x %d\n", _ow, _oh);
 				fprintf(_gf, "world_tex: %d x %d\n", world_tex_w, world_tex_h);
+				fprintf(_gf, "bit_depth: %d\n", (int)bit_depth);
+				if (vita_world_src) fprintf(_gf, "src_BitsPerPixel: %d  BytesPerPixel: %d\n", vita_world_src->format->BitsPerPixel, vita_world_src->format->BytesPerPixel);
+				fprintf(_gf, "world_tex_fmt: 0x%08x\n", (unsigned)world_tex_fmt);
 				fclose(_gf);
 			}
 		}

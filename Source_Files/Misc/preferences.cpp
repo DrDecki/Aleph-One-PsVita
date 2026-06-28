@@ -4127,17 +4127,17 @@ void write_preferences()
 static void default_graphics_preferences(graphics_preferences_data *preferences)
 {
   memset(&preferences->screen_mode, '\0', sizeof(screen_mode_data));
-	preferences->screen_mode.gamma_level= DEFAULT_GAMMA_LEVEL;
+	preferences->screen_mode.gamma_level= 3; // Vita: Normal
 
-	preferences->screen_mode.width = 640;
-	preferences->screen_mode.height = 480;
-	preferences->screen_mode.auto_resolution = true;
-	preferences->screen_mode.high_dpi = true;
+	preferences->screen_mode.width = 960;
+	preferences->screen_mode.height = 544;
+	preferences->screen_mode.auto_resolution = false;
+	preferences->screen_mode.high_dpi = false;
 	preferences->screen_mode.hud = true;
-	preferences->screen_mode.hud_scale_level = 0;
+	preferences->screen_mode.hud_scale_level = 2;
 	preferences->screen_mode.term_scale_level = 2;
 	preferences->screen_mode.translucent_map = false;
-	preferences->screen_mode.acceleration = _opengl_acceleration;
+	preferences->screen_mode.acceleration = _no_acceleration;
 	preferences->screen_mode.high_resolution = true;
 	preferences->screen_mode.fullscreen = true;
 	preferences->screen_mode.fix_h_not_v = true;
@@ -4146,13 +4146,13 @@ static void default_graphics_preferences(graphics_preferences_data *preferences)
 	
 	preferences->screen_mode.draw_every_other_line= false;
 
-	preferences->screen_mode.fov = 0; // use default
+	preferences->screen_mode.fov = 90;
 	
 	OGL_SetDefaults(preferences->OGL_Configure);
 
 	preferences->software_alpha_blending = _sw_alpha_off;
 	preferences->software_sdl_driver = _sw_driver_default;
-	preferences->fps_target = 30;
+	preferences->fps_target = 0; // Vita: unlimited
 
 	preferences->movie_export_video_quality = 50;
 	preferences->movie_export_audio_quality = 50;

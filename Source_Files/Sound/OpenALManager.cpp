@@ -352,6 +352,11 @@ bool OpenALManager::GenerateSources() {
 	alcGetIntegerv(p_ALCDevice, ALC_STEREO_SOURCES, 1, &stereoSources);
 	int nbSources = monoSources + stereoSources;
 
+#ifdef __vita__
+	// Vita: Anzahl gleichzeitiger Audio-Quellen deckeln, um malloc-Crash
+	// im OpenAL-Mixer bei viel Action zu vermeiden (Speicherdruck senken)
+	if (nbSources > 32) nbSources = 32;
+#endif
 	std::vector<ALuint> sources_id(nbSources);
 	alGenSources(nbSources, sources_id.data());
 	for (auto source_id : sources_id) {
