@@ -13,7 +13,7 @@ etc.) are supported as well.
 
 ## 1. Install the app
 
-1. Copy `alephone-vita.vpk` to your Vita (for example to `ux0:/`).
+1. Copy `alephone.vpk` to your Vita (for example to `ux0:/`).
 2. Open VitaShell, highlight the VPK, press **X** and confirm the install.
 3. Aleph One now appears on the LiveArea home screen.
 
