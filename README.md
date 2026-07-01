@@ -1,7 +1,72 @@
-# Installing on Vita
+# Aleph One for PS Vita (Marathon Trilogy)
 
-Get the official Scenarios from the Aleph One Website and put them into ux0:/data/AlephOne/
-(Download)
+This is a native PS Vita port of Aleph One, the open source engine for
+Bungie's _Marathon_, _Marathon 2: Durandal_ and _Marathon Infinity_. All
+three games run in high resolution with a widescreen presentation tailored
+to the Vita's screen. Third-party scenarios (Eternal, Rubicon, Tempus Irae,
+etc.) are supported as well.
+
+## Requirements
+
+- A PS Vita or PS TV with custom firmware (HENkaku / Ensō).
+- A way to install VPK files, e.g. [VitaShell](https://github.com/TheOfficialFloW/VitaShell).
+
+## 1. Install the app
+
+1. Copy `alephone-vita.vpk` to your Vita (for example to `ux0:/`).
+2. Open VitaShell, highlight the VPK, press **X** and confirm the install.
+3. Aleph One now appears on the LiveArea home screen.
+
+## 2. Add the game data
+
+The engine ships **without** any game data — you have to provide the
+scenario files yourself. They are **not** included in this download.
+
+The three official Marathon games are free and can be downloaded from the
+official Aleph One website:
+
+  https://alephone.lhowon.org/scenarios.html
+
+Download the scenarios you want and copy each one into its own folder under:
+
+    ux0:/data/AlephOne/
+
+The result should look like this:
+
+    ux0:/data/AlephOne/Marathon/
+    ux0:/data/AlephOne/Marathon 2/
+    ux0:/data/AlephOne/Marathon Infinity/
+
+Each scenario folder must contain that game's data files (Maps, Shapes,
+Sounds, Images, etc.) — i.e. the contents that come inside the downloaded
+scenario, not another folder wrapped around them.
+
+### Third-party scenarios
+
+Community scenarios (Eternal, Rubicon X, Tempus Irae, Marathon Phoenix,
+etc.) work the same way. Obtain them from their respective authors and place
+each one in its own folder next to the others:
+
+    ux0:/data/AlephOne/<Scenario Name>/
+
+You are responsible for obtaining these files from their original sources.
+
+## Notes
+
+- On first launch every scenario is configured automatically for the Vita:
+  960x544, high resolution, 90° field of view, normal brightness, 32-bit
+  color and unlimited frame rate.
+- The controls are mapped to the Vita out of the box: left stick to move,
+  right stick to look, **R** to fire, **L** for the secondary trigger,
+  **A** to act/interact, **B** for the previous weapon, **X** for the map,
+  D-pad to switch weapons and zoom the map, stick clicks to run and to look
+  ahead.
+- Scenarios that do not include their own Enhanced HUD automatically use the
+  shared widescreen HUD, so every game has a proper Vita-friendly interface.
+- If a scenario ever shows the wrong settings, delete its preferences file
+  in `ux0:/data/AlephOne/` and relaunch to regenerate the Vita defaults.
+
+---
 
 # Aleph One
 
