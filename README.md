@@ -59,9 +59,8 @@ You are responsible for obtaining these files from their original sources.
 - The controls are mapped to the Vita out of the box: left stick to move,
   right stick to look, **R** to fire, **L** for the secondary trigger,
   **A** to act/interact, **B** for the previous weapon, **X** for the map,
-  **Y** for the microphone, left/right on the D-pad to glance, up/down on
-  the D-pad to zoom the map, and the stick clicks to run (left) and to look
-  ahead (right).
+  **Y** for the microphone, left/right on the D-pad to glance, and up/down
+  on the D-pad to zoom the map.
 - Scenarios that do not include their own Enhanced HUD automatically use the
   shared widescreen HUD, so every game has a proper Vita-friendly interface.
 - If a scenario ever shows the wrong settings, delete its preferences file
