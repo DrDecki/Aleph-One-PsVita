@@ -353,8 +353,7 @@ bool OpenALManager::GenerateSources() {
 	int nbSources = monoSources + stereoSources;
 
 #ifdef __vita__
-	// Vita: Anzahl gleichzeitiger Audio-Quellen deckeln, um malloc-Crash
-	// im OpenAL-Mixer bei viel Action zu vermeiden (Speicherdruck senken)
+	// Vita: cap concurrent sources, avoids a mixer OOM crash under load
 	if (nbSources > 32) nbSources = 32;
 #endif
 	std::vector<ALuint> sources_id(nbSources);

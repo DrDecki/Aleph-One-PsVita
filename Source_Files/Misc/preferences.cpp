@@ -4127,7 +4127,7 @@ void write_preferences()
 static void default_graphics_preferences(graphics_preferences_data *preferences)
 {
   memset(&preferences->screen_mode, '\0', sizeof(screen_mode_data));
-	preferences->screen_mode.gamma_level= 3; // Vita: Normal
+	preferences->screen_mode.gamma_level= 3; // Vita: normal brightness
 
 	preferences->screen_mode.width = 960;
 	preferences->screen_mode.height = 544;
