@@ -58,11 +58,47 @@ You are responsible for obtaining these files from their original sources.
   color and unlimited frame rate.
 - The controls are mapped to the Vita out of the box: left stick to move,
   right stick to look, **R** to fire, **L** for the secondary trigger,
-  **A** to act/interact, **B** for the previous weapon, **X** for the map,
-  **Y** for the microphone, left/right on the D-pad to glance, and up/down
-  on the D-pad to zoom the map.
+  **Cross** to act/interact, **Circle** for the next weapon, **Square**
+  for the map, **Triangle** to open the cheat console, left/right on the
+  D-pad to glance, and up/down on the D-pad to zoom the map.
 - If a scenario ever shows the wrong settings, delete its preferences file
   in `ux0:/data/AlephOne/` and relaunch to regenerate the Vita defaults.
+
+## Cheats
+
+The port ships with a built-in cheat console, available in every scenario.
+It requires the `Lua/Cheats.lua` file from the data package
+(`AlephOne_data.zip`) to be installed under `ux0:/data/AlephOne/`.
+
+Press **Triangle** in-game, type a command (including the parentheses)
+and confirm with Enter:
+
+| Command | Effect |
+| --- | --- |
+| `nrg()` | Recharge energy (1x -> 2x -> 3x shields) |
+| `otwo()` | Refill oxygen |
+| `nuke()` | Invincibility power-up (temporary) |
+| `kyt()` | Toggle permanent invincibility |
+| `bye()` | Invisibility power-up |
+| `see()` | Infravision |
+| `wow()` | Extravision |
+| `mag()` | Pistol + ammo |
+| `melt()` | Fusion pistol + ammo |
+| `rif()` | Assault rifle + ammo and grenades |
+| `pow()` | Rocket launcher + ammo |
+| `toast()` | Flamethrower + fuel |
+| `puff()` | Shotgun + ammo |
+| `zip()` | SMG + ammo |
+| `pzbxay()` | Alien weapon |
+| `ammo()` | +10 ammo for all weapons |
+| `shit()` | All weapons, all ammo, full shields |
+| `qwe()` | Jump |
+| `yourmom()` | Save the game anywhere |
+| `sesame()` | Activate whatever you are pointing at |
+| `wtf()` | Show the level completion state |
+
+If the console gets stuck after closing the keyboard without input, press
+**Triangle** and confirm an empty line with Enter to reset it.
 
 ---
 
