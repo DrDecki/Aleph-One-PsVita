@@ -68,7 +68,7 @@ You are responsible for obtaining these files from their original sources.
 
 The port ships with a built-in cheat console, available in every scenario.
 It requires the `Lua/Cheats.lua` file from the data package
-(`AlephOne_data.zip`) to be installed under `ux0:/data/AlephOne/`.
+(`AlephOne.zip`) to be installed under `ux0:/data/AlephOne/`.
 
 Press **Triangle** in-game, type a command (including the parentheses)
 and confirm with Enter:
