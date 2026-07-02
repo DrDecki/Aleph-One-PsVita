@@ -1427,8 +1427,7 @@ void render_screen(short ticks_elapsed)
 	}
 #ifdef __vita__
 	{
-		// Vita: getrennte Render-Skalierung fuer Low/High.
-		// High = scharfer Mittelweg (720x408 GPU-hochskaliert), Low = nahezu nativ.
+		// Vita: 3D render scale (0.70 at high-res, native at low-res)
 		const float _vita_3d_scale = HighResolution ? 0.70f : 1.0f;
 		int _bw = (int)(BufferRect.w * _vita_3d_scale);
 		int _bh = (int)(BufferRect.h * _vita_3d_scale);
@@ -1826,8 +1825,7 @@ static void update_screen(SDL_Rect &source, SDL_Rect &destination, bool hi_rez, 
 {
 	SDL_Surface *s = world_pixels;
 #ifndef __vita__
-	// Vita: teure Pro-Pixel-Gammakorrektur ueberspringen (kostet ~37ms/Frame
-	// bei Nicht-Standard-Gamma). Bild bleibt auf Standard-Gamma.
+	// Vita: skip per-pixel gamma correction, too slow on this hardware
 	if (!using_default_gamma && bit_depth > 8) {
 		apply_gamma(world_pixels, world_pixels_corrected);
 		s = world_pixels_corrected;
@@ -2301,10 +2299,7 @@ void draw_intro_screen(void)
 	{
 		SDL_Surface *s = Intro_Buffer;
 #ifdef __vita__
-		// Vita: Gammakorrektur nur waehrend eines aktiven Fades anwenden.
-		// Sonst laeuft sie wegen der Helligkeitseinstellung dauernd und
-		// laesst die statischen Menues ruckeln. Waehrend des Fades ist sie
-		// noetig, damit der Ein-/Ausblend-Effekt smooth bleibt.
+		// Vita: only run gamma during an active fade (avoids per-frame cost)
 		if (!using_default_gamma && (!fade_finished() || intro_buffer_changed)) {
 #else
 		if (!using_default_gamma) {

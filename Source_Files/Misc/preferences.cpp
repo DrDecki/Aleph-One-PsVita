@@ -1862,8 +1862,7 @@ static key_binding_map default_key_bindings = {
 	{ 19, { SDL_SCANCODE_M,
 		static_cast<SDL_Scancode>(AO_SCANCODE_BASE_JOYSTICK_BUTTON + SDL_CONTROLLER_BUTTON_X)
 	} },
-	{ 20, { SDL_SCANCODE_GRAVE,
-		static_cast<SDL_Scancode>(AO_SCANCODE_BASE_JOYSTICK_BUTTON + SDL_CONTROLLER_BUTTON_Y)
+	{ 20, { SDL_SCANCODE_GRAVE
 	} },
 };
 
@@ -1890,7 +1889,8 @@ static key_binding_map default_shell_key_bindings = {
 	} },
 	{ 7, { SDL_SCANCODE_SLASH
 	} },
-	{ 8, { SDL_SCANCODE_BACKSLASH
+	{ 8, { SDL_SCANCODE_BACKSLASH,
+		static_cast<SDL_Scancode>(AO_SCANCODE_BASE_JOYSTICK_BUTTON + SDL_CONTROLLER_BUTTON_Y)
 	} },
 	{ 9, { SDL_SCANCODE_N
 	} },
@@ -4127,7 +4127,7 @@ void write_preferences()
 static void default_graphics_preferences(graphics_preferences_data *preferences)
 {
   memset(&preferences->screen_mode, '\0', sizeof(screen_mode_data));
-	preferences->screen_mode.gamma_level= 3; // Vita: Normal
+	preferences->screen_mode.gamma_level= 3; // Vita: normal brightness
 
 	preferences->screen_mode.width = 960;
 	preferences->screen_mode.height = 544;
@@ -4294,8 +4294,14 @@ static void default_environment_preferences(environment_preferences_data *prefer
 	preferences->reduce_singletons = false;
 	preferences->smooth_text = true;
 
+#ifdef __vita__
+	// Vita: built-in cheat console, loaded from the shared Lua folder
+	strncpy(preferences->solo_lua_file, "ux0:/data/AlephOne/Lua/Cheats.lua", 256);
+	preferences->use_solo_lua = true;
+#else
 	preferences->solo_lua_file[0] = 0;
 	preferences->use_solo_lua = false;
+#endif
 	preferences->use_replay_net_lua = false;
 	preferences->hide_extensions = true;
 	preferences->film_profile = FILM_PROFILE_DEFAULT;
