@@ -1839,7 +1839,8 @@ static key_binding_map default_key_bindings = {
 	} },
 	{ 12, { SDL_SCANCODE_R,
 		static_cast<SDL_Scancode>(AO_SCANCODE_MOUSESCROLL_DOWN),
-		static_cast<SDL_Scancode>(AO_SCANCODE_BASE_JOYSTICK_BUTTON + SDL_CONTROLLER_BUTTON_DPAD_UP)
+		static_cast<SDL_Scancode>(AO_SCANCODE_BASE_JOYSTICK_BUTTON + SDL_CONTROLLER_BUTTON_DPAD_UP),
+		static_cast<SDL_Scancode>(AO_SCANCODE_BASE_JOYSTICK_BUTTON + SDL_CONTROLLER_BUTTON_B)
 	} },
 	{ 13, { SDL_SCANCODE_SPACE,
 		static_cast<SDL_Scancode>(AO_SCANCODE_BASE_MOUSE_BUTTON + SDL_BUTTON_LEFT - 1),
