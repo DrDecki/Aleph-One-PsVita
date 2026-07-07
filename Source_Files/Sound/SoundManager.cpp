@@ -22,6 +22,7 @@ SOUND.C
 
 #include <iostream>
 #include <functional>
+#include <SDL.h>
 
 #include "SoundManager.h"
 #include "ReplacementSounds.h"
@@ -260,6 +261,7 @@ bool SoundManager::LoadSound(short sound_index)
 		return false;
 	}
 	
+	SDL_LockAudio();
 	if (sounds->IsLoaded(sound_index))
 	{
 		sounds->Update(sound_index);
@@ -291,6 +293,7 @@ bool SoundManager::LoadSound(short sound_index)
 		}
 	}
 
+	SDL_UnlockAudio();
 	return sounds->IsLoaded(sound_index);
 }
 
