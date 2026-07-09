@@ -47,12 +47,20 @@ StatsManager::StatsManager() : thread_(0), run_(true), busy_(false)
 {
 	entry_mutex_ = SDL_CreateMutex();
 
+#ifndef __vita__
 	// do uploads in a separate thread
 	thread_ = SDL_CreateThread(Run, "StatsManager_uploadThread", this);
+#endif
 }
 
 void StatsManager::Process()
 {
+#ifdef __vita__
+	// Vita: skip stats collection/upload entirely - avoids a background
+	// thread doing unrelated heap activity concurrently with the main
+	// thread (implicated in intermittent heap corruption crashes)
+	return;
+#endif
 	Entry entry;
 	if (CollectLuaStats(entry.options, entry.parameters))
 	{
