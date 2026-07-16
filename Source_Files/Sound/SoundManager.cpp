@@ -782,11 +782,13 @@ std::shared_ptr<SoundPlayer> SoundManager::UpdateExistingPlayer(const Sound& sou
 	auto existingPlayer = GetSoundPlayer(soundParameters.identifier, soundParameters.source_identifier, !(parameters.flags & _3d_sounds_flag) || (soundParameters.flags & _sound_cannot_be_restarted));
 
 	if (existingPlayer) {
+		SDL_LockAudio();
 
 		if (soundParameters.soft_rewind || (!(soundParameters.flags & _sound_cannot_be_restarted) &&
 			(existingPlayer->CanFastRewind(soundParameters) || simulatedVolume + abortAmplitudeThreshold > SoundPlayer::Simulate(existingPlayer->GetParameters())))) {
 			existingPlayer->AskRewind(soundParameters, sound); //we found one, we won't create another player but rewind this one instead
 		}
+		SDL_UnlockAudio();
 	}
 
 	return existingPlayer;

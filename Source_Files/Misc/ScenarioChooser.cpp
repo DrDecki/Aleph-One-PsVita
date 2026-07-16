@@ -143,7 +143,7 @@ bool ScenarioChooserScenario::load(const std::string& path)
 	OpenedFile of;
 	if (image_file.Open(of))
 	{
-		image.reset(IMG_Load_RW(of.GetRWops(), 0));
+		image.reset(IMG_Load_RW(of.GetRWops(), 0), SDL_FreeSurface);
 	}
 #endif
 
@@ -153,7 +153,7 @@ bool ScenarioChooserScenario::load(const std::string& path)
 		OpenedFile of;
 		if (image_file.Open(of))
 		{
-			image.reset(SDL_LoadBMP_RW(of.GetRWops(), 0));
+			image.reset(SDL_LoadBMP_RW(of.GetRWops(), 0), SDL_FreeSurface);
 		}
 	}
 
@@ -536,7 +536,7 @@ void ScenarioChooser::optimize_image(ScenarioChooserScenario& scenario, SDL_Wind
 	dst_rect.x = (scenario_width - dst_rect.w) / 2;
 	dst_rect.y = (scenario_height - dst_rect.h) / 2;
 
-	scenario.image.reset(SDL_CreateRGBSurface(0, scenario_width, scenario_height, format->BitsPerPixel, format->Rmask, format->Gmask, format->Bmask, format->Amask));
+	scenario.image.reset(SDL_CreateRGBSurface(0, scenario_width, scenario_height, format->BitsPerPixel, format->Rmask, format->Gmask, format->Bmask, format->Amask), SDL_FreeSurface);
 
 	SDL_FillRect(scenario.image.get(), nullptr, SDL_MapRGB(scenario.image->format, 0, 0, 0));
 
