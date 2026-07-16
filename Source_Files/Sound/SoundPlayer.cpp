@@ -30,7 +30,7 @@ SoundPlayer::SoundPlayer(const Sound& sound, const SoundParameters& parameters)
 }
 
 void SoundPlayer::Init(const SoundParameters& parameters) {
-	const auto& sound = this->sound.Get();
+	const auto sound = this->sound.Get();
 	AudioPlayer::Init(sound.header.rate >> 16, sound.header.stereo, sound.header.audio_format);
 	this->parameters.Set(parameters);
 	data_length = sound.header.length;
@@ -71,7 +71,7 @@ float SoundPlayer::Simulate(const SoundParameters& soundParameters) {
 }
 
 bool SoundPlayer::CanRewind(uint64_t baseTick) const {
-	const auto& rewindParameters = rewind_parameters.Get();
+	const auto rewindParameters = rewind_parameters.Get();
 	if (rewindParameters.soft_rewind) return true;
 	const auto rewindTime = OpenALManager::Get()->IsBalanceRewindSound() || !CanFastRewind(rewindParameters) ? rewind_time : fast_rewind_time;
 	return baseTick + rewindTime < SoundManager::GetCurrentAudioTick();
@@ -96,7 +96,7 @@ void SoundPlayer::Rewind() {
 		return;
 	}
 
-	const auto& rewindParameters = rewind_parameters.Get();
+	const auto rewindParameters = rewind_parameters.Get();
 
 	if (!rewindParameters.soft_rewind) {
 		AudioPlayer::Rewind();
@@ -109,7 +109,7 @@ void SoundPlayer::Rewind() {
 			rewind_signal = false;
 	}
 
-	const auto& oldParameters = parameters.Get();
+	const auto oldParameters = parameters.Get();
 
 	sound.Update();
 	Init(rewindParameters);
@@ -156,7 +156,7 @@ bool SoundPlayer::LoadParametersUpdates() {
 //This is called everytime we process a player in the queue with this source
 SetupALResult SoundPlayer::SetUpALSourceIdle() {
 
-	const auto& soundParameters = parameters.Get();
+	const auto soundParameters = parameters.Get();
 	alSourcef(audio_source->source_id, AL_PITCH, soundParameters.pitch);
 	SetupALResult result = {true, true};
 	bool softStopDone = false;
@@ -326,7 +326,7 @@ float SoundPlayer::ComputeVolumeForTransition(float targetVolume) {
 //Distance units are WORLD_ONE and are a copy of sound_behavior_definition for most part
 SetupALResult SoundPlayer::SetUpALSource3D() {
 
-	const auto& soundParameters = parameters.Get();
+	const auto soundParameters = parameters.Get();
 	const bool obstruction = (soundParameters.obstruction_flags & _sound_was_obstructed) || (soundParameters.obstruction_flags & _sound_was_media_obstructed);
 	const bool double_obstruction = (soundParameters.obstruction_flags & _sound_was_obstructed) && (soundParameters.obstruction_flags & _sound_was_media_obstructed);
 	const bool muffled = soundParameters.obstruction_flags & _sound_was_media_muffled;
@@ -389,11 +389,27 @@ uint32_t SoundPlayer::ConvertMonoToStereo(const uint8_t* inputBytes, uint8_t* ou
 
 uint32_t SoundPlayer::ProcessData(uint8_t* outputData, uint32_t remainingSoundDataLength, uint32_t remainingBufferLength) {
 
-	const auto& sound = this->sound.Get();
+	const auto sound = this->sound.Get();
 
 	if (sound.header.stereo || !MustDisableHrtf())
 	{
 		const auto length = std::min(remainingSoundDataLength, remainingBufferLength);
+#ifdef __vita__
+		if (current_index_data + length > sound.data->size())
+		{
+			FILE* f = fopen("ux0:/sound_guard_hit.txt", "a");
+			if (f)
+			{
+				fprintf(f, "SOUND BOUNDS VIOLATION\n");
+				fprintf(f, "  current_index_data=%lu length=%lu data_length=%lu actual_size=%lu\n",
+					(unsigned long)current_index_data, (unsigned long)length,
+					(unsigned long)data_length, (unsigned long)sound.data->size());
+				fclose(f);
+			}
+			volatile int* crash_ptr = 0;
+			*crash_ptr = 0;
+		}
+#endif
 		std::copy(sound.data->data() + current_index_data, sound.data->data() + current_index_data + length, outputData);
 		current_index_data += length;
 		return length;
