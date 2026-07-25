@@ -1427,7 +1427,6 @@ void render_screen(short ticks_elapsed)
 	}
 #ifdef __vita__
 	{
-		// Vita: 3D render scale (0.70 at high-res, native at low-res)
 		const float _vita_3d_scale = HighResolution ? 0.70f : 1.0f;
 		int _bw = (int)(BufferRect.w * _vita_3d_scale);
 		int _bh = (int)(BufferRect.h * _vita_3d_scale);
@@ -1825,7 +1824,6 @@ static void update_screen(SDL_Rect &source, SDL_Rect &destination, bool hi_rez, 
 {
 	SDL_Surface *s = world_pixels;
 #ifndef __vita__
-	// Vita: skip per-pixel gamma correction, too slow on this hardware
 	if (!using_default_gamma && bit_depth > 8) {
 		apply_gamma(world_pixels, world_pixels_corrected);
 		s = world_pixels_corrected;
@@ -1833,7 +1831,7 @@ static void update_screen(SDL_Rect &source, SDL_Rect &destination, bool hi_rez, 
 #endif
 		
 #ifdef __vita__
-	if (false) // Vita: immer GPU-Upscale-Pfad, nie direkter Blit
+	if (false)
 #else
 	if (hi_rez) 
 #endif
@@ -2299,7 +2297,6 @@ void draw_intro_screen(void)
 	{
 		SDL_Surface *s = Intro_Buffer;
 #ifdef __vita__
-		// Vita: only run gamma during an active fade (avoids per-frame cost)
 		if (!using_default_gamma && (!fade_finished() || intro_buffer_changed)) {
 #else
 		if (!using_default_gamma) {

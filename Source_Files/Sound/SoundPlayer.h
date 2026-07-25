@@ -79,6 +79,7 @@ struct Sound {
 class SoundPlayer : public AudioPlayer {
 public:
 	SoundPlayer(const Sound& sound, const SoundParameters& parameters); //Must not be used outside OpenALManager (public for make_shared)
+	~SoundPlayer();
 	void UpdateParameters(const SoundParameters& parameters) { this->parameters.Store(parameters); }
 	void UpdateRewindParameters(const SoundParameters& parameters) { this->rewind_parameters.Store(parameters); }
 	short GetIdentifier() const { return parameters.Get().identifier; }
@@ -120,6 +121,7 @@ private:
 	SoundTransition sound_transition;
 	uint32_t data_length;
 	uint32_t current_index_data;
+	uint32_t alive_canary_;
 	uint64_t start_tick;
 
 	template<typename T> 
