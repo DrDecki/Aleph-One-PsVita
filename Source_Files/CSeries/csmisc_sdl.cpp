@@ -57,7 +57,7 @@ uint64_t machine_tick_count(void)
 void sleep_for_machine_ticks(uint32 ticks)
 {
 #ifdef __vita__
-	sceKernelDelayThread(ticks * TIME_SKEW * 1000);  // Vita: native microsecond delay
+	sceKernelDelayThread(ticks * TIME_SKEW * 1000);
 #else
 	std::this_thread::sleep_for(std::chrono::milliseconds(ticks*TIME_SKEW));
 #endif

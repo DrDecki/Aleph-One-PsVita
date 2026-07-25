@@ -4127,7 +4127,7 @@ void write_preferences()
 static void default_graphics_preferences(graphics_preferences_data *preferences)
 {
   memset(&preferences->screen_mode, '\0', sizeof(screen_mode_data));
-	preferences->screen_mode.gamma_level= 3; // Vita: normal brightness
+	preferences->screen_mode.gamma_level= 3;
 
 	preferences->screen_mode.width = 960;
 	preferences->screen_mode.height = 544;
@@ -4152,7 +4152,7 @@ static void default_graphics_preferences(graphics_preferences_data *preferences)
 
 	preferences->software_alpha_blending = _sw_alpha_off;
 	preferences->software_sdl_driver = _sw_driver_default;
-	preferences->fps_target = 0; // Vita: unlimited
+	preferences->fps_target = 0;
 
 	preferences->movie_export_video_quality = 50;
 	preferences->movie_export_audio_quality = 50;
@@ -4295,7 +4295,6 @@ static void default_environment_preferences(environment_preferences_data *prefer
 	preferences->smooth_text = true;
 
 #ifdef __vita__
-	// Vita: built-in cheat console, loaded from the shared Lua folder
 	strncpy(preferences->solo_lua_file, "ux0:/data/AlephOne/Lua/Cheats.lua", 256);
 	preferences->use_solo_lua = true;
 #else

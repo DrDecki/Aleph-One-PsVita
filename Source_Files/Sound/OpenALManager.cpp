@@ -353,7 +353,6 @@ bool OpenALManager::GenerateSources() {
 	int nbSources = monoSources + stereoSources;
 
 #ifdef __vita__
-	// Vita: cap concurrent sources, avoids a mixer OOM crash under load
 	if (nbSources > 32) nbSources = 32;
 #endif
 	std::vector<ALuint> sources_id(nbSources);

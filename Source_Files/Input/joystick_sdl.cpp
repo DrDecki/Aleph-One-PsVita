@@ -197,7 +197,9 @@ int process_joystick_axes(int flags) {
 		
 		int val = axis_values[axis] * (negative ? -1 : 1);
 		if (val > controller_deadzone) {
-			float norm = val/32767.f * (static_cast<float>(controller_sensitivity) / FIXED_ONE);
+			float raw_norm = val/32767.f;
+			float curved_norm = raw_norm * raw_norm;
+			float norm = curved_norm * (static_cast<float>(controller_sensitivity) / FIXED_ONE);
 			constexpr float angle_per_norm = 768/63.f;
 			angular_deltas[info.abs_pos_index] += norm * (info.negative ? -1.0 : 1.0) * angle_per_norm;
 		}
