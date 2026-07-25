@@ -36,7 +36,16 @@ void SoundPlayer::Init(const SoundParameters& parameters) {
 	data_length = sound.header.length;
 	start_tick = SoundManager::GetCurrentAudioTick();
 	current_index_data = 0;
+#ifdef __vita__
+	alive_canary_ = 0xA1EEC0DE;
+#endif
 }
+
+#ifdef __vita__
+SoundPlayer::~SoundPlayer() {
+	alive_canary_ = 0xDEADDEAD;
+}
+#endif
 
 //Simulate what the volume of our sound would be if we play it
 //If the volume is 0 then we just don't play the sound and drop it
@@ -389,6 +398,18 @@ uint32_t SoundPlayer::ConvertMonoToStereo(const uint8_t* inputBytes, uint8_t* ou
 
 uint32_t SoundPlayer::ProcessData(uint8_t* outputData, uint32_t remainingSoundDataLength, uint32_t remainingBufferLength) {
 
+#ifdef __vita__
+	if (alive_canary_ != 0xA1EEC0DE)
+	{
+		FILE* f = fopen("ux0:/canary_hit.txt", "a");
+		if (f)
+		{
+			fprintf(f, "CANARY MISMATCH in ProcessData: this=%p alive_canary_=0x%lx (expected 0xA1EEC0DE)\n", (void*)this, (unsigned long)alive_canary_);
+			fclose(f);
+		}
+		return 0;
+	}
+#endif
 	const auto sound = this->sound.Get();
 
 	if (sound.header.stereo || !MustDisableHrtf())
@@ -419,6 +440,22 @@ uint32_t SoundPlayer::ProcessData(uint8_t* outputData, uint32_t remainingSoundDa
 	const auto input = (sound.data->data() + current_index_data);
 	uint32_t bytesWritten;
 
+#ifdef __vita__
+	if (current_index_data + remainingSoundDataLength > sound.data->size())
+	{
+		FILE* f = fopen("ux0:/sound_guard_hit.txt", "a");
+		if (f)
+		{
+			fprintf(f, "SOUND BOUNDS VIOLATION (HRTF path)\n");
+			fprintf(f, "  current_index_data=%lu remainingSoundDataLength=%lu data_length=%lu actual_size=%lu\n",
+				(unsigned long)current_index_data, (unsigned long)remainingSoundDataLength,
+				(unsigned long)data_length, (unsigned long)sound.data->size());
+			fclose(f);
+		}
+		volatile int* crash_ptr = 0;
+		*crash_ptr = 0;
+	}
+#endif
 	switch (sound.header.audio_format) {
 	case AudioFormat::_8_bit:
 		bytesWritten = ConvertMonoToStereo<uint8_t>(input, outputData, remainingSoundDataLength, remainingBufferLength);
