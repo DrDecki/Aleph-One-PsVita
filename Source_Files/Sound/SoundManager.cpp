@@ -962,6 +962,7 @@ static void add_one_ambient_sound_source(struct ambient_sound_data *ambient_soun
 }
 
 void SoundManager::CleanInactivePlayers(std::set<std::shared_ptr<SoundPlayer>>& players) {
+	SDL_LockAudio();
 	auto iterator = players.begin();
 	while (iterator != players.end()) {
 		if (!(*iterator)->IsActive())
@@ -969,6 +970,7 @@ void SoundManager::CleanInactivePlayers(std::set<std::shared_ptr<SoundPlayer>>& 
 		else
 			iterator++;
 	}
+	SDL_UnlockAudio();
 }
 
 void SoundManager::UpdateAmbientSoundSources()
