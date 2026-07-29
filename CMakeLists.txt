@@ -44,7 +44,7 @@ target_link_libraries(alephone
     -Wl,--end-group
 )
 vita_create_self(eboot.bin alephone UNSAFE)
-vita_create_vpk(alephone-vita.vpk ALPH00001 eboot.bin
+vita_create_vpk(alephone.vpk ALPH00001 eboot.bin
   VERSION "01.00"
   NAME "Aleph One"
   FILE
