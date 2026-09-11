@@ -43,7 +43,8 @@ vita_create_vpk(alephone-vita.vpk ALPH00001 eboot.bin
   NAME "Aleph One"
   FILE
     ${CMAKE_SOURCE_DIR}/sce_sys/icon0.png sce_sys/icon0.png
-    ${CMAKE_SOURCE_DIR}/sce_sys/livearea/contents/bg0.png sce_sys/livearea/contents/bg0.png
+    ${CMAKE_SOURCE_DIR}/sce_sys/pic0.png sce_sys/pic0.png
+    ${CMAKE_SOURCE_DIR}/sce_sys/livearea/contents/bg.png sce_sys/livearea/contents/bg.png
     ${CMAKE_SOURCE_DIR}/sce_sys/livearea/contents/startup.png sce_sys/livearea/contents/startup.png
     ${CMAKE_SOURCE_DIR}/sce_sys/livearea/contents/template.xml sce_sys/livearea/contents/template.xml
 )
