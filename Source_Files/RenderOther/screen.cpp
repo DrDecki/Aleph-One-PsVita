@@ -19,6 +19,9 @@
 
 */
 
+#define VITA_PERF_LOG 1
+
+
 /*
  *  screen_sdl.cpp - Screen management, SDL implementation
  *
@@ -1427,7 +1430,7 @@ void render_screen(short ticks_elapsed)
 	}
 #ifdef __vita__
 	{
-		const float _vita_3d_scale = HighResolution ? 0.70f : 1.0f;
+		const float _vita_3d_scale = 1.0f;
 		int _bw = (int)(BufferRect.w * _vita_3d_scale);
 		int _bh = (int)(BufferRect.h * _vita_3d_scale);
 		_bw &= ~1; _bh &= ~1;
@@ -2507,7 +2510,22 @@ void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 			world_tex_w = vita_world_src->w; world_tex_h = vita_world_src->h; world_tex_fmt = _wf;
 		}
 		SDL_SetTextureBlendMode(main_texture, SDL_BLENDMODE_BLEND);
-		SDL_UpdateTexture(world_texture, NULL, vita_world_src->pixels, vita_world_src->pitch);
+		{
+			void *_lp; int _lpitch;
+			if (SDL_LockTexture(world_texture, NULL, &_lp, &_lpitch) == 0) {
+				if (_lpitch == vita_world_src->pitch) {
+					memcpy(_lp, vita_world_src->pixels, (size_t)_lpitch * vita_world_src->h);
+				} else {
+					int _cpb = _lpitch < vita_world_src->pitch ? _lpitch : vita_world_src->pitch;
+					for (int _row = 0; _row < vita_world_src->h; _row++) {
+						memcpy((Uint8*)_lp + _row*_lpitch, (Uint8*)vita_world_src->pixels + _row*vita_world_src->pitch, (size_t)_cpb);
+					}
+				}
+				SDL_UnlockTexture(world_texture);
+			} else {
+				SDL_UpdateTexture(world_texture, NULL, vita_world_src->pixels, vita_world_src->pitch);
+			}
+		}
 	}
 	if (_gpu && vita_hud_dirty_valid) {
 		Uint8 *_hp = (Uint8*)main_surface->pixels
