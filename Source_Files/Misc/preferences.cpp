@@ -4142,7 +4142,7 @@ static void default_graphics_preferences(graphics_preferences_data *preferences)
 	preferences->screen_mode.fullscreen = true;
 	preferences->screen_mode.fix_h_not_v = true;
 	preferences->screen_mode.bobbing_type = BobbingType::camera_and_weapon;
-	preferences->screen_mode.bit_depth = 32;
+	preferences->screen_mode.bit_depth = 16;
 	
 	preferences->screen_mode.draw_every_other_line= false;
 
