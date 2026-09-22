@@ -159,7 +159,11 @@ void Image_Blitter::Draw(SDL_Surface *dst_surface, const Image_Rect& dst, const 
 	if (!dst_surface)
 		return;
 	
+#ifdef __vita__
+    if (!m_disp_surface)
+#else
     if (!m_disp_surface || (dst_surface && m_disp_surface->format->format != dst_surface->format->format))
+#endif
     {
         if (m_disp_surface) SDL_FreeSurface(m_disp_surface);
 		m_disp_surface = SDL_ConvertSurfaceFormat(m_surface, SDL_PIXELFORMAT_ARGB8888, 0);
