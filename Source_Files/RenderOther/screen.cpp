@@ -154,6 +154,9 @@ static void DisplayMessages(SDL_Surface *s);
 static void DrawSurface(SDL_Surface *s, SDL_Rect &dest_rect, SDL_Rect &src_rect);
 static void clear_screen_margin();
 
+#ifdef __vita__
+#include <psp2/kernel/clib.h>
+#endif
 SDL_PixelFormat pixel_format_16, pixel_format_32;
 
 static bitmap_definition_buffer bitmap_definition_of_sdl_surface(const SDL_Surface* surface)
@@ -1850,6 +1853,64 @@ static inline bool pixel_formats_equal(SDL_PixelFormat* a, SDL_PixelFormat* b)
 		a->Bmask == b->Bmask);
 }
 
+#ifdef __vita__
+#include <psp2/kernel/clib.h>
+static SDL_Thread *vita_up_thread = NULL;
+static SDL_sem *vita_up_go = NULL, *vita_up_done = NULL;
+static void *vita_up_dst = NULL;
+static const void *vita_up_src = NULL;
+static int vita_up_dpitch = 0, vita_up_spitch = 0, vita_up_rows = 0, vita_up_bytes = 0;
+static bool vita_up_pending = false;
+
+static int vita_upload_worker(void *)
+{
+	for (;;) {
+		SDL_SemWait(vita_up_go);
+		if (vita_up_dpitch == vita_up_spitch)
+			sceClibMemcpy(vita_up_dst, vita_up_src, (size_t)vita_up_dpitch * vita_up_rows);
+		else
+			for (int r = 0; r < vita_up_rows; r++)
+				sceClibMemcpy((Uint8*)vita_up_dst + r * vita_up_dpitch, (const Uint8*)vita_up_src + r * vita_up_spitch, (size_t)vita_up_bytes);
+		SDL_SemPost(vita_up_done);
+	}
+	return 0;
+}
+
+static void vita_finish_world_upload(void)
+{
+	if (!vita_up_pending) return;
+	SDL_SemWait(vita_up_done);
+	SDL_UnlockTexture(world_texture);
+	vita_up_pending = false;
+}
+
+static void vita_start_world_upload(SDL_Surface *src)
+{
+	vita_finish_world_upload();
+	Uint32 wf = SDL_MasksToPixelFormatEnum(src->format->BitsPerPixel, src->format->Rmask, src->format->Gmask, src->format->Bmask, src->format->Amask);
+	if (wf == SDL_PIXELFORMAT_UNKNOWN) wf = pixel_format_32.format;
+	if (!world_texture || world_tex_w != src->w || world_tex_h != src->h || world_tex_fmt != wf) {
+		if (world_texture) SDL_DestroyTexture(world_texture);
+		world_texture = SDL_CreateTexture(main_render, wf, SDL_TEXTUREACCESS_STREAMING, src->w, src->h);
+		world_tex_w = src->w; world_tex_h = src->h; world_tex_fmt = wf;
+	}
+	if (!world_texture) return;
+	if (!vita_up_thread) {
+		vita_up_go = SDL_CreateSemaphore(0);
+		vita_up_done = SDL_CreateSemaphore(0);
+		vita_up_thread = SDL_CreateThread(vita_upload_worker, "vita_upload", NULL);
+		if (!vita_up_thread) return;
+	}
+	void *lp; int lpitch;
+	if (SDL_LockTexture(world_texture, NULL, &lp, &lpitch) != 0) return;
+	vita_up_dst = lp; vita_up_src = src->pixels;
+	vita_up_dpitch = lpitch; vita_up_spitch = src->pitch; vita_up_rows = src->h;
+	vita_up_bytes = lpitch < src->pitch ? lpitch : src->pitch;
+	vita_up_pending = true;
+	SDL_SemPost(vita_up_go);
+}
+#endif
+
 static void update_screen(SDL_Rect &source, SDL_Rect &destination, bool hi_rez, bool every_other_line)
 {
 	SDL_Surface *s = world_pixels;
@@ -1875,6 +1936,7 @@ static void update_screen(SDL_Rect &source, SDL_Rect &destination, bool hi_rez, 
 #ifdef __vita__
 		if (s && s->format->BytesPerPixel >= 2) {
 			vita_world_src = s;
+			vita_start_world_upload(s);
 			SDL_Rect _hud = Screen::instance()->hud_rect();
 			_hud.x = 0; _hud.w = main_surface->w;
 			if (_hud.x < 0) { _hud.w += _hud.x; _hud.x = 0; }
@@ -2535,15 +2597,16 @@ void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 			world_tex_w = vita_world_src->w; world_tex_h = vita_world_src->h; world_tex_fmt = _wf;
 		}
 		SDL_SetTextureBlendMode(main_texture, SDL_BLENDMODE_BLEND);
-		{
+		if (vita_up_pending) vita_finish_world_upload();
+		else {
 			void *_lp; int _lpitch;
 			if (SDL_LockTexture(world_texture, NULL, &_lp, &_lpitch) == 0) {
 				if (_lpitch == vita_world_src->pitch) {
-					memcpy(_lp, vita_world_src->pixels, (size_t)_lpitch * vita_world_src->h);
+					sceClibMemcpy(_lp, vita_world_src->pixels, (size_t)_lpitch * vita_world_src->h);
 				} else {
 					int _cpb = _lpitch < vita_world_src->pitch ? _lpitch : vita_world_src->pitch;
 					for (int _row = 0; _row < vita_world_src->h; _row++) {
-						memcpy((Uint8*)_lp + _row*_lpitch, (Uint8*)vita_world_src->pixels + _row*vita_world_src->pitch, (size_t)_cpb);
+						sceClibMemcpy((Uint8*)_lp + _row*_lpitch, (Uint8*)vita_world_src->pixels + _row*vita_world_src->pitch, (size_t)_cpb);
 					}
 				}
 				SDL_UnlockTexture(world_texture);
@@ -2622,6 +2685,7 @@ void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 		_pf_af=_pf_au=_pf_ac=_pf_ap=0; _pf_fc=0;
 	}
 #endif
+	vita_finish_world_upload();
 	vita_gpu_upscale_active = false;
 #else
 	SDL_UpdateTexture(main_texture, NULL, main_surface->pixels, main_surface->pitch);
