@@ -1778,6 +1778,33 @@ static void apply_gamma(SDL_Surface *src, SDL_Surface *dst)
 	uint8 *sptr = static_cast<uint8*>(src->pixels);
 	uint8 *dptr = static_cast<uint8*>(dst->pixels);
 	size_t numpixels = src->w * src->h;
+	if (sbpp == 4 && dbpp == 4 && srl == 0 && sgl == 0 && sbl == 0) {
+		uint32 lr[256], lg[256], lb[256];
+		for (int k = 0; k < 256; ++k) {
+			lr[k] = (((((uint32)(current_gamma_r[k] >> 8)) >> drl) << drs) & drm) | dst->format->Amask;
+			lg[k] = ((((uint32)(current_gamma_g[k] >> 8)) >> dgl) << dgs) & dgm;
+			lb[k] = ((((uint32)(current_gamma_b[k] >> 8)) >> dbl) << dbs) & dbm;
+		}
+		const uint32 *sp = reinterpret_cast<const uint32*>(sptr);
+		uint32 *dp = reinterpret_cast<uint32*>(dptr);
+		size_t i = 0;
+		for (; i + 4 <= numpixels; i += 4) {
+			__builtin_prefetch(sp + i + 64);
+			__builtin_prefetch(dp + i + 64, 1);
+			uint32 p0 = sp[i], p1 = sp[i + 1], p2 = sp[i + 2], p3 = sp[i + 3];
+			dp[i]     = lr[(p0 >> srs) & 0xFF] | lg[(p0 >> sgs) & 0xFF] | lb[(p0 >> sbs) & 0xFF];
+			dp[i + 1] = lr[(p1 >> srs) & 0xFF] | lg[(p1 >> sgs) & 0xFF] | lb[(p1 >> sbs) & 0xFF];
+			dp[i + 2] = lr[(p2 >> srs) & 0xFF] | lg[(p2 >> sgs) & 0xFF] | lb[(p2 >> sbs) & 0xFF];
+			dp[i + 3] = lr[(p3 >> srs) & 0xFF] | lg[(p3 >> sgs) & 0xFF] | lb[(p3 >> sbs) & 0xFF];
+		}
+		for (; i < numpixels; ++i) {
+			uint32 p = sp[i];
+			dp[i] = lr[(p >> srs) & 0xFF] | lg[(p >> sgs) & 0xFF] | lb[(p >> sbs) & 0xFF];
+		}
+		if (SDL_MUSTLOCK(dst))
+			SDL_UnlockSurface(dst);
+		return;
+	}
 	for (size_t i = 0; i < numpixels; ++i) {
 		switch (sbpp) {
 			case 2:
@@ -2266,18 +2293,6 @@ void draw_intro_screen(void)
 	
 	SDL_Rect src_rect = { 0, 0, Intro_Buffer->w, Intro_Buffer->h };
 	SDL_Rect dst_rect = { 0, 0, src_rect.w, src_rect.h};
-#ifdef VITA_PERF_LOG
-	{
-		FILE *_mf = fopen("ux0:/menu.txt", "w");
-		if (_mf) {
-			fprintf(_mf, "Intro_Buffer: %d x %d\n", Intro_Buffer->w, Intro_Buffer->h);
-			if (main_surface) fprintf(_mf, "main_surface: %d x %d\n", main_surface->w, main_surface->h);
-			fprintf(_mf, "src_rect: %d x %d\n", src_rect.w, src_rect.h);
-			fprintf(_mf, "dst_rect: %d x %d\n", dst_rect.w, dst_rect.h);
-			fclose(_mf);
-		}
-	}
-#endif
 	
 #ifdef HAVE_OPENGL
 	if (OGL_IsActive()) {
@@ -2303,6 +2318,16 @@ void draw_intro_screen(void)
 		if (!using_default_gamma && (!fade_finished() || intro_buffer_changed)) {
 #else
 		if (!using_default_gamma) {
+#endif
+#ifdef __vita__
+			if (main_surface && main_surface->w == Intro_Buffer->w && main_surface->h == Intro_Buffer->h
+				&& main_surface->format->BytesPerPixel == 4 && main_surface->pitch == main_surface->w * 4
+				&& Intro_Buffer->pitch == Intro_Buffer->w * 4 && dst_rect.x == 0 && dst_rect.y == 0) {
+				apply_gamma(Intro_Buffer, main_surface);
+				MainScreenUpdateRects(1, &dst_rect);
+				intro_buffer_changed = false;
+				return;
+			}
 #endif
 			apply_gamma(Intro_Buffer, Intro_Buffer_corrected);
 			SDL_SetSurfaceBlendMode(Intro_Buffer_corrected, SDL_BLENDMODE_NONE);
