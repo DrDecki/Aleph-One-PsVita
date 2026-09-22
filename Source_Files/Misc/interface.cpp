@@ -1017,6 +1017,18 @@ void update_interface_display(
 		_ls = game_state.current_screen; _lh = game_state.highlighted_main_menu_item;
 	}
 #endif
+#ifdef __vita__
+	{
+		static short _cp = -1, _cs = -1, _ch = -999;
+		static Uint32 _ct = 0;
+		short _pict = data->screen_base + game_state.current_screen;
+		Uint32 _now = SDL_GetTicks();
+		bool _need = (_pict != _cp || game_state.state != _cs || game_state.highlighted_main_menu_item != _ch || _now - _ct > 300);
+		_ct = _now;
+		if (!_need) { draw_intro_screen(); return; }
+		_cp = _pict; _cs = game_state.state; _ch = game_state.highlighted_main_menu_item;
+	}
+#endif
 	/* Use this to avoid the fade.. */
 	draw_full_screen_pict_resource_from_images(data->screen_base+game_state.current_screen);
 
