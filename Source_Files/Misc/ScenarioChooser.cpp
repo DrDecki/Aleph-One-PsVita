@@ -280,6 +280,7 @@ std::pair<std::string, bool> ScenarioChooser::run()
 #ifdef __vita__
 	if (vita_chooser_texture) { SDL_DestroyTexture(vita_chooser_texture); vita_chooser_texture = nullptr; }
 	if (vita_chooser_renderer) { SDL_DestroyRenderer(vita_chooser_renderer); vita_chooser_renderer = nullptr; }
+	SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
 	if (vita_chooser_canvas) { SDL_FreeSurface(vita_chooser_canvas); vita_chooser_canvas = nullptr; }
 #endif
 
@@ -591,7 +592,6 @@ void ScenarioChooser::redraw(SDL_Window* window)
 		vita_chooser_renderer = SDL_CreateRenderer(window, pick, 0);
 		if (!vita_chooser_renderer)
 			vita_chooser_renderer = SDL_CreateRenderer(window, -1, 0);
-		SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
 		vita_chooser_texture = SDL_CreateTexture(vita_chooser_renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, w, h);
 		vita_chooser_canvas = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ABGR8888);
 		vita_chooser_dirty = true;
