@@ -19,7 +19,7 @@ etc.) are supported as well.
 
 ## 2. Add the game data
 
-The engine ships **without** any game data — you have to provide the
+The engine ships **without** any game data, you have to provide the
 scenario files yourself. They are **not** included in this download.
 
 The three official Marathon games are free and can be downloaded from the
@@ -38,7 +38,7 @@ The result should look like this:
     ux0:/data/AlephOne/Marathon Infinity/
 
 Each scenario folder must contain that game's data files (Maps, Shapes,
-Sounds, Images, etc.) — i.e. the contents that come inside the downloaded
+Sounds, Images, etc.), i.e. the contents that come inside the downloaded
 scenario, not another folder wrapped around them.
 
 ### Third-party scenarios
