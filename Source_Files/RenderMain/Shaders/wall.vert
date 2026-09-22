@@ -15,8 +15,9 @@ void main(void) {
 	gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
 	/* SETUP TBN MATRIX in normal matrix coords, gl_MultiTexCoord1 = tangent vector */
 	vec3 n = normalize(gl_NormalMatrix * gl_Normal);
-	vec3 t = normalize(gl_NormalMatrix * gl_MultiTexCoord1.xyz);
-	vec3 b = normalize(cross(n, t) * gl_MultiTexCoord1.w);
+	vec4 tangentSign = vec4(gl_MultiTexCoord1.xy, gl_MultiTexCoord2.xy);
+	vec3 t = normalize(gl_NormalMatrix * tangentSign.xyz);
+	vec3 b = normalize(cross(n, t) * tangentSign.w);
 	/* (column wise) */
 	mat3 tbnMatrix = mat3(t.x, b.x, n.x, t.y, b.y, n.y, t.z, b.z, n.z);
 

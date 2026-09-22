@@ -29,6 +29,10 @@
 
 #ifdef HAVE_OPENGL
 
+#ifdef __vita__
+#include <vitaGL.h>
+#else
+
 #ifdef __WIN32__
 
 #define GLEW_STATIC 1
@@ -46,6 +50,8 @@
 #include <OpenGL/glu.h>
 #else
 #include <GL/glu.h>
+#endif
+
 #endif
 
 #endif
