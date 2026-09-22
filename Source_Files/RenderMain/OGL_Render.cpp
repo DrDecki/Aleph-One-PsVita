@@ -345,7 +345,11 @@ const double FullCircleReciprocal = 1/double(FULL_CIRCLE);
 
 
 // Number of static-effect rendering passes
+#ifndef __vita__
+// vitaGL has no GL_POLYGON_STIPPLE/glPolygonStipple support (GLES has no
+// polygon stippling); use the stencil-buffer static effect below instead.
 #define USE_STIPPLE_STATIC_EFFECT
+#endif
 #ifdef USE_STIPPLE_STATIC_EFFECT
 // For stippling
 const int StaticEffectPasses = 4;
@@ -1199,8 +1203,8 @@ void FindShadingColor(GLdouble Depth, _fixed Shading, GLfloat *Color)
 // Storage of intermediate results for mass render with glDrawArrays
 struct ExtendedVertexData
 {
-	GLdouble Vertex[4];
-	GLdouble TexCoord[2];
+	GLfloat Vertex[4];
+	GLfloat TexCoord[2];
 	GLfloat Color[3];
 	GLfloat GlowColor[3];
 };
@@ -1617,8 +1621,8 @@ static bool RenderAsRealWall(polygon_definition& RenderPolygon, bool IsVertical)
 	SetProjectionType(Projection_OpenGL_Eye);
 	
 	// Location of data:
-	glVertexPointer(4,GL_DOUBLE,sizeof(ExtendedVertexData),ExtendedVertexList[0].Vertex);
-	glTexCoordPointer(2,GL_DOUBLE,sizeof(ExtendedVertexData),ExtendedVertexList[0].TexCoord);
+	glVertexPointer(4,GL_FLOAT,sizeof(ExtendedVertexData),ExtendedVertexList[0].Vertex);
+	glTexCoordPointer(2,GL_FLOAT,sizeof(ExtendedVertexData),ExtendedVertexList[0].TexCoord);
 	
 	// Painting a texture...
 	glEnable(GL_TEXTURE_2D);
@@ -1633,13 +1637,13 @@ static bool RenderAsRealWall(polygon_definition& RenderPolygon, bool IsVertical)
 
 		if (UseFlatStatic)
 		{
-			glDrawArrays(GL_POLYGON,0,NumVertices);
+			glDrawArrays(GL_TRIANGLE_FAN,0,NumVertices);
 		} else {
 			// Do multitextured stippling to create the static effect
 			for (int k=0; k<StaticEffectPasses; k++)
 			{
 				StaticModeIndivSetup(k);
-				glDrawArrays(GL_POLYGON,0,NumVertices);
+				glDrawArrays(GL_TRIANGLE_FAN,0,NumVertices);
 			}
 		}
 		TeardownStaticMode();
@@ -1775,7 +1779,7 @@ static bool RenderAsRealWall(polygon_definition& RenderPolygon, bool IsVertical)
 	else
 		// Go!
 		// Don't care about triangulation here, because the polygon never got split
-		glDrawArrays(GL_POLYGON,0,NumVertices);
+		glDrawArrays(GL_TRIANGLE_FAN,0,NumVertices);
 	
 	// Do textured rendering
 	if (TMgr.IsGlowMapped())
@@ -1803,7 +1807,7 @@ static bool RenderAsRealWall(polygon_definition& RenderPolygon, bool IsVertical)
 		else
 		{
 			SglColor3f(GlowColor,GlowColor,GlowColor);
-			glDrawArrays(GL_POLYGON,0,NumVertices);
+			glDrawArrays(GL_TRIANGLE_FAN,0,NumVertices);
 		}
 	}
 	}
@@ -1863,7 +1867,7 @@ static bool RenderAsLandscape(polygon_definition& RenderPolygon)
 		glVertexPointer(3,GL_SHORT,sizeof(AltExtendedVertexData),AltEVList[0].Vertex);
 		
 		// Go!
-		glDrawArrays(GL_POLYGON,0,NumVertices);
+		glDrawArrays(GL_TRIANGLE_FAN,0,NumVertices);
 		
 		// Restore
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -1975,8 +1979,8 @@ static bool RenderAsLandscape(polygon_definition& RenderPolygon)
 	SetProjectionType(Projection_Screen);
 	
 	// Location of data:
-	glVertexPointer(3,GL_DOUBLE,sizeof(ExtendedVertexData),ExtendedVertexList[0].Vertex);
-	glTexCoordPointer(2,GL_DOUBLE,sizeof(ExtendedVertexData),ExtendedVertexList[0].TexCoord);
+	glVertexPointer(3,GL_FLOAT,sizeof(ExtendedVertexData),ExtendedVertexList[0].Vertex);
+	glTexCoordPointer(2,GL_FLOAT,sizeof(ExtendedVertexData),ExtendedVertexList[0].TexCoord);
 	
 	// Painting a texture...
 	glEnable(GL_TEXTURE_2D);
@@ -1984,7 +1988,7 @@ static bool RenderAsLandscape(polygon_definition& RenderPolygon)
 	TMgr.RenderNormal();
 	
 	// Go!
-	glDrawArrays(GL_POLYGON,0,NumVertices);
+	glDrawArrays(GL_TRIANGLE_FAN,0,NumVertices);
 	
 	// Cribbed from RenderAsRealWall()
 	// Do textured rendering
@@ -2002,7 +2006,7 @@ static bool RenderAsLandscape(polygon_definition& RenderPolygon)
 		
 		TMgr.RenderGlowing();
 		SetBlend(TMgr.GlowBlend());
-		glDrawArrays(GL_POLYGON,0,NumVertices);
+		glDrawArrays(GL_TRIANGLE_FAN,0,NumVertices);
 	}
 	
 	// Revert to default blend
@@ -2183,8 +2187,8 @@ bool OGL_RenderSprite(rectangle_definition& RenderRectangle)
 	glColor4fv(Color);
 	
 	// Location of data:
-	glVertexPointer(3,GL_DOUBLE,sizeof(ExtendedVertexData),ExtendedVertexList[0].Vertex);
-	glTexCoordPointer(2,GL_DOUBLE,sizeof(ExtendedVertexData),ExtendedVertexList[0].TexCoord);
+	glVertexPointer(3,GL_FLOAT,sizeof(ExtendedVertexData),ExtendedVertexList[0].Vertex);
+	glTexCoordPointer(2,GL_FLOAT,sizeof(ExtendedVertexData),ExtendedVertexList[0].TexCoord);
 	glEnable(GL_TEXTURE_2D);
 		
 	// Go!
@@ -2196,13 +2200,13 @@ bool OGL_RenderSprite(rectangle_definition& RenderRectangle)
 		if (UseFlatStatic)
 		{
 			glDisable(GL_DEPTH_TEST);
-			glDrawArrays(GL_POLYGON,0,4);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 		} else {
 			// Do multitextured stippling to create the static effect
 			for (int k=0; k<StaticEffectPasses; k++)
 			{
 				StaticModeIndivSetup(k);
-				glDrawArrays(GL_POLYGON,0,4);
+				glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			}
 		}
 		TeardownStaticMode();
@@ -2213,7 +2217,7 @@ bool OGL_RenderSprite(rectangle_definition& RenderRectangle)
 		SetBlend(TMgr.NormalBlend());
 
 		// Do textured rendering
-		glDrawArrays(GL_POLYGON,0,4);
+		glDrawArrays(GL_TRIANGLE_FAN,0,4);
 		
 		if (TMgr.IsGlowMapped())
 		{
@@ -2228,7 +2232,7 @@ bool OGL_RenderSprite(rectangle_definition& RenderRectangle)
 			
 			TMgr.RenderGlowing();
 			SetBlend(TMgr.GlowBlend());
-			glDrawArrays(GL_POLYGON,0,4);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 		}
 	}
 	
@@ -2757,7 +2761,7 @@ void StaticModeIndivSetup(int SeqNo)
 		glStencilMask(0);
 		glEnable(GL_BLEND);
 		glDisable(GL_ALPHA_TEST);
-		if(Using_sRGB) glDisable(GL_FRAMEBUFFER_sRGB);
+		if(Using_sRGB) glDisable(GL_FRAMEBUFFER_SRGB);
 		glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
 		glColor4f(1,1,1,Using_sRGB ? StencilTxtrOpacity*StencilTxtrOpacity : StencilTxtrOpacity);	// Static is fully bright and partially transparent
 		break;
@@ -2809,7 +2813,7 @@ void StaticModeShader(void *Data)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	}
-	if(*Which == 3 && Using_sRGB) glEnable(GL_FRAMEBUFFER_sRGB);
+	if(*Which == 3 && Using_sRGB) glEnable(GL_FRAMEBUFFER_SRGB);
 #endif
 }
 
@@ -3104,7 +3108,7 @@ void OGL_RenderRect(float x, float y, float w, float h)
 	
 	GLfloat vertices[8] = { x, y, x + w, y, x + w, y + h, x, y + h };
 	glVertexPointer(2, GL_FLOAT, 0, vertices);
-	glDrawArrays(GL_POLYGON, 0, 4);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
 	glEnable(GL_TEXTURE_2D);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -3121,7 +3125,7 @@ void OGL_RenderTexturedRect(float x, float y, float w, float h, float tleft, flo
 	GLfloat texcoords[8] = { tleft, ttop, tright, ttop, tright, tbottom, tleft, tbottom };
     glVertexPointer(2, GL_FLOAT, 0, vertices);
 	glTexCoordPointer(2, GL_FLOAT, 0, texcoords);
-	glDrawArrays(GL_POLYGON, 0, 4);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
 void OGL_RenderTexturedRect(const SDL_Rect& rect, float tleft, float ttop, float tright, float tbottom)

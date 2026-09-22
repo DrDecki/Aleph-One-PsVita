@@ -34,7 +34,11 @@ target_link_libraries(alephone
     ${CMAKE_SOURCE_DIR}/Source_Files/Sound/libsound.a
     ${CMAKE_SOURCE_DIR}/Source_Files/TCPMess/libtcpmess.a
     ${CMAKE_SOURCE_DIR}/Source_Files/XML/libxml.a
-    SDL2_image SDL2 SceGxm_stub SceDisplay_stub SceCtrl_stub SceAppMgr_stub
+    SDL2_image /home/maximilian/vga-test/libSDL2-vitagl.a
+    vitaGL vitashark mathneon
+    SceShaccCg_stub SceShaccCgExt taihen_stub
+    SceKernelDmacMgr_stub SceIme_stub
+    SceGxm_stub SceDisplay_stub SceCtrl_stub SceAppMgr_stub
     SceAppUtil_stub SceAudio_stub SceAudioIn_stub SceSysmodule_stub
     SceIofilemgr_stub SceCommonDialog_stub SceTouch_stub SceHid_stub
     SceMotion_stub ScePower_stub SceProcessmgr_stub webpdemux webp sharpyuv

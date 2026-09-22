@@ -305,7 +305,11 @@ void OGL_StartTextures()
 	{
 		GL_RGBA8,
 		GL_RGBA4,
+#ifdef __vita__
+		GL_RGB5_A1 // vitaGL has no GL_RGBA2
+#else
 		GL_RGBA2
+#endif
 	};
 	
 	OGL_ConfigureData& ConfigureData = Get_OGL_ConfigureData();
@@ -1218,7 +1222,11 @@ void TextureManager::PlaceTexture(const ImageDescriptor *Image, bool normal_map)
 		if (internalFormat == GL_RGBA8)
 			internalFormat = GL_RGB8;
 		else if (internalFormat == GL_RGBA4)
+#ifdef __vita__
+			internalFormat = GL_RGB5_A1; // vitaGL has no GL_RGB5
+#else
 			internalFormat = GL_RGB5;
+#endif
 	} 
 	else if (!IsBlended() && internalFormat == GL_RGBA4)
 	{
@@ -1232,23 +1240,31 @@ void TextureManager::PlaceTexture(const ImageDescriptor *Image, bool normal_map)
 	if(load_as_sRGB) {
 	  switch(internalFormat) {
 	  case GL_RGB:
+#ifndef __vita__
 	  case GL_R3_G3_B2:
 	  case GL_RGB4:
 	  case GL_RGB5:
+#endif
 	  case GL_RGB8:
+#ifndef __vita__
 	  case GL_RGB10:
 	  case GL_RGB12:
 	  case GL_RGB16:
+#endif
 	    internalFormat = GL_SRGB;
 	    break;
 	  case GL_RGBA:
+#ifndef __vita__
 	  case GL_RGBA2:
+#endif
 	  case GL_RGBA4:
 	  case GL_RGB5_A1:
 	  case GL_RGBA8:
+#ifndef __vita__
 	  case GL_RGB10_A2:
 	  case GL_RGBA12:
 	  case GL_RGBA16:
+#endif
 	    internalFormat = GL_SRGB_ALPHA;
 	    break;
 #if defined(GL_ARB_texture_compression) && defined(GL_COMPRESSED_RGB_S3TC_DXT1_EXT)

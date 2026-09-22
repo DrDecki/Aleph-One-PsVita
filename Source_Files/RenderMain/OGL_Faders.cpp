@@ -118,11 +118,17 @@ bool OGL_DoFades(float Left, float Top, float Right, float Bottom)
 		case _tint_fader_type:
 			// The simplest kind: fade to the fader color.
 			glColor4fv(Fader.Color);
-			glDrawArrays(GL_POLYGON,0,4);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			break;
 		
 		case _randomize_fader_type:
+#ifdef __vita__
+			// vitaGL has no GL_COLOR_LOGIC_OP/glLogicOp support; always use
+			// the blend-based static effect instead of the XOR bit-flip one.
+			UseFlatStatic = true;
+#else
 			UseFlatStatic = TEST_FLAG(Get_OGL_ConfigureData().Flags,OGL_Flag_FlatStatic);
+#endif
 			if (UseFlatStatic)
 			{
 				for (int c=0; c<3; c++)
@@ -131,7 +137,7 @@ bool OGL_DoFades(float Left, float Top, float Right, float Bottom)
 				glDisable(GL_ALPHA_TEST);
 				glEnable(GL_BLEND);
 				glColor4usv(FlatStaticColor);
-				glDrawArrays(GL_POLYGON,0,4);
+				glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			}
 			else
 			{
@@ -140,11 +146,15 @@ bool OGL_DoFades(float Left, float Top, float Right, float Bottom)
 				glDisable(GL_BLEND);
 				MultAlpha(Fader.Color,BlendColor);
 				glColor3fv(BlendColor);
+#ifndef __vita__
 				glEnable(GL_COLOR_LOGIC_OP);
 				glLogicOp(GL_XOR);
-				glDrawArrays(GL_POLYGON,0,4);
+#endif
+				glDrawArrays(GL_TRIANGLE_FAN,0,4);
 				// Revert to defaults
+#ifndef __vita__
 				glDisable(GL_COLOR_LOGIC_OP);
+#endif
 				glEnable(GL_BLEND);
 			}
 			break;
@@ -156,7 +166,7 @@ bool OGL_DoFades(float Left, float Top, float Right, float Bottom)
 			MultAlpha(Fader.Color,BlendColor);
 			glColor4fv(BlendColor);
 			glBlendFunc(GL_ONE_MINUS_DST_COLOR,GL_ONE_MINUS_SRC_ALPHA);
-			glDrawArrays(GL_POLYGON,0,4);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			// Revert to defaults
 			glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 			break;
@@ -166,9 +176,9 @@ bool OGL_DoFades(float Left, float Top, float Right, float Bottom)
 			MultAlpha(BlendColor,BlendColor);
 			glColor4fv(BlendColor);
 			glBlendFunc(GL_DST_COLOR,GL_ONE_MINUS_SRC_ALPHA);
-			glDrawArrays(GL_POLYGON,0,4);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			glBlendFunc(GL_DST_COLOR,GL_ONE);
-			glDrawArrays(GL_POLYGON,0,4);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			// Revert to defaults
 			glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 			break;
@@ -180,12 +190,12 @@ bool OGL_DoFades(float Left, float Top, float Right, float Bottom)
 			MultAlpha(Fader.Color,BlendColor);
 			glColor4fv(BlendColor);
 			glBlendFunc(GL_DST_COLOR,GL_ONE);
-			glDrawArrays(GL_POLYGON,0,4);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			ComplementColor(Fader.Color,BlendColor);
 			MultAlpha(BlendColor,BlendColor);
 			glColor4fv(BlendColor);
 			glBlendFunc(GL_SRC_ALPHA,GL_ONE);
-			glDrawArrays(GL_POLYGON,0,4);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			// Revert to defaults
 			glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 			break;
@@ -196,7 +206,7 @@ bool OGL_DoFades(float Left, float Top, float Right, float Bottom)
 			MultAlpha(Fader.Color,BlendColor);
 			glColor4fv(BlendColor);
 			glBlendFunc(GL_DST_COLOR,GL_ONE_MINUS_SRC_ALPHA);
-			glDrawArrays(GL_POLYGON,0,4);
+			glDrawArrays(GL_TRIANGLE_FAN,0,4);
 			// Revert to defaults
 			glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 			break;

@@ -174,7 +174,7 @@ void OverheadMap_OGL_Class::draw_polygon(
 		PolygonCache.push_back(vertices[k]);
 	}
 	
-	// glDrawElements(GL_POLYGON,vertex_count,GL_UNSIGNED_SHORT,vertices);
+	// glDrawElements(GL_TRIANGLE_FAN,vertex_count,GL_UNSIGNED_SHORT,vertices);
 }
 
 void OverheadMap_OGL_Class::end_polygons()
@@ -330,7 +330,7 @@ void OverheadMap_OGL_Class::draw_player(
 	glDisable(GL_TEXTURE_2D);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glVertexPointer(2,GL_FLOAT,0,PlayerShape[0]);
-	glDrawArrays(GL_POLYGON,0,3);
+	glDrawArrays(GL_TRIANGLE_FAN,0,3);
 
 	glPopMatrix();
 }
