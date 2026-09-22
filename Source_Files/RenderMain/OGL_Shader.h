@@ -97,7 +97,7 @@ public:
 	};
 private:
 
-	GLhandleARB _programObj;
+	GLuint _programObj;
 	std::string _vert;
 	std::string _frag;
 	int16 _passes;
@@ -112,7 +112,7 @@ private:
 
 	GLint getUniformLocation(UniformName name) { 
 		if (_uniform_locations[name] == -1) {
-			_uniform_locations[name] = glGetUniformLocationARB(_programObj, _uniform_names[name]);
+			_uniform_locations[name] = glGetUniformLocation(_programObj, _uniform_names[name]);
 		}
 		return _uniform_locations[name];
 	}

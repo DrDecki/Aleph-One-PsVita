@@ -181,12 +181,12 @@ void parseFile(FileSpecifier& fileSpec, std::string& s) {
 }
 
 
-GLhandleARB parseShader(const GLcharARB* str, GLenum shaderType) {
+GLuint parseShader(const GLchar* str, GLenum shaderType) {
 
 	GLint status;
-	GLhandleARB shader = glCreateShaderObjectARB(shaderType);
+	GLuint shader = glCreateShader(shaderType);
 
-	std::vector<const GLcharARB*> source;
+	std::vector<const GLchar*> source;
 
         if (DisableClipVertex()) {
             source.push_back("#define DISABLE_CLIP_VERTEX\n");
@@ -201,10 +201,22 @@ GLhandleARB parseShader(const GLcharARB* str, GLenum shaderType) {
 	}
 	source.push_back(str);
 
-	glShaderSourceARB(shader, source.size(), &source[0], NULL);
+	glShaderSource(shader, source.size(), &source[0], NULL);
 
-	glCompileShaderARB(shader);
-	glGetObjectParameterivARB(shader, GL_OBJECT_COMPILE_STATUS_ARB, &status);
+	glCompileShader(shader);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+#ifdef __vita__
+	{
+		GLint _len = 0; glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &_len);
+		FILE *_f = fopen("ux0:/data/AlephOne/shader_log.txt", "a");
+		if (_f) {
+			fprintf(_f, "=== type=0x%x status=%d loglen=%d ===\n", (unsigned)shaderType, (int)status, (int)_len);
+			if (!status) fprintf(_f, "%s\n", str);
+			if (_len > 1) { char *_b = (char*)malloc(_len); glGetShaderInfoLog(shader, _len, NULL, _b); fprintf(_f, "LOG:\n%s\n", _b); free(_b); }
+			fclose(_f);
+		}
+	}
+#endif
 
 	if(status) {
 		return shader;
@@ -220,7 +232,7 @@ GLhandleARB parseShader(const GLcharARB* str, GLenum shaderType) {
             free(infoLog);
         }
         
-		glDeleteObjectARB(shader);
+		glDeleteShader(shader);
 		return 0;
 	}
 }
@@ -277,29 +289,29 @@ void Shader::init() {
 
 	_loaded = true;
 
-	_programObj = glCreateProgramObjectARB();
+	_programObj = glCreateProgram();
 
 	assert(!_vert.empty());
-	GLhandleARB vertexShader = parseShader(_vert.c_str(), GL_VERTEX_SHADER_ARB);
+	GLuint vertexShader = parseShader(_vert.c_str(), GL_VERTEX_SHADER);
     if(!vertexShader) {
         _vert = defaultVertexPrograms["error"];
-        vertexShader = parseShader(_vert.c_str(), GL_VERTEX_SHADER_ARB);
+        vertexShader = parseShader(_vert.c_str(), GL_VERTEX_SHADER);
     }
 	
-	glAttachObjectARB(_programObj, vertexShader);
-	glDeleteObjectARB(vertexShader);
+	glAttachShader(_programObj, vertexShader);
+	glDeleteShader(vertexShader);
 
 	assert(!_frag.empty());
-	GLhandleARB fragmentShader = parseShader(_frag.c_str(), GL_FRAGMENT_SHADER_ARB);
+	GLuint fragmentShader = parseShader(_frag.c_str(), GL_FRAGMENT_SHADER);
 	if(!fragmentShader) {
         _frag = defaultFragmentPrograms["error"];
-        fragmentShader = parseShader(_frag.c_str(), GL_FRAGMENT_SHADER_ARB);
+        fragmentShader = parseShader(_frag.c_str(), GL_FRAGMENT_SHADER);
     }
     
-	glAttachObjectARB(_programObj, fragmentShader);
-	glDeleteObjectARB(fragmentShader);
+	glAttachShader(_programObj, fragmentShader);
+	glDeleteShader(fragmentShader);
 	
-	glLinkProgramARB(_programObj);
+	glLinkProgram(_programObj);
     
     GLint linked;
     glGetProgramiv((GLuint)(size_t)_programObj, GL_LINK_STATUS, &linked);
@@ -319,14 +331,14 @@ void Shader::init() {
 
 	assert(_programObj);
 
-	glUseProgramObjectARB(_programObj);
+	glUseProgram(_programObj);
 
-	glUniform1iARB(getUniformLocation(U_Texture0), 0);
-	glUniform1iARB(getUniformLocation(U_Texture1), 1);
-	glUniform1iARB(getUniformLocation(U_Texture2), 2);
-	glUniform1iARB(getUniformLocation(U_Texture3), 3);	
+	glUniform1i(getUniformLocation(U_Texture0), 0);
+	glUniform1i(getUniformLocation(U_Texture1), 1);
+	glUniform1i(getUniformLocation(U_Texture2), 2);
+	glUniform1i(getUniformLocation(U_Texture3), 3);	
 
-	glUseProgramObjectARB(0);
+	glUseProgram(0);
 
 //	assert(glGetError() == GL_NO_ERROR);
 }
@@ -335,13 +347,13 @@ void Shader::setFloat(UniformName name, float f) {
 
 	if (_cached_floats[name] != f) {
 		_cached_floats[name] = f;
-		glUniform1fARB(getUniformLocation(name), f);
+		glUniform1f(getUniformLocation(name), f);
 	}
 }
 
 void Shader::setMatrix4(UniformName name, float *f) {
 
-	glUniformMatrix4fvARB(getUniformLocation(name), 1, false, f);
+	glUniformMatrix4fv(getUniformLocation(name), 1, false, f);
 }
 
 Shader::~Shader() {
@@ -350,16 +362,16 @@ Shader::~Shader() {
 
 void Shader::enable() {
 	if(!_loaded) { init(); }
-	glUseProgramObjectARB(_programObj);
+	glUseProgram(_programObj);
 }
 
 void Shader::disable() {
-	glUseProgramObjectARB(0);
+	glUseProgram(0);
 }
 
 void Shader::unload() {
 	if(_programObj) {
-		glDeleteObjectARB(_programObj);
+		glDeleteProgram(_programObj);
 		_programObj = 0;
 		_loaded = false;
 	}

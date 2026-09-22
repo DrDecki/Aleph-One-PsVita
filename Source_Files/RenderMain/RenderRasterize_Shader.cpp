@@ -495,9 +495,9 @@ std::unique_ptr<TextureManager> RenderRasterize_Shader::setupWallTexture(const s
 	if(TMgr->Setup()) {
 		TMgr->RenderNormal(); // must allocate first
 		if (TEST_FLAG(Get_OGL_ConfigureData().Flags, OGL_Flag_BumpMap)) {
-			glActiveTextureARB(GL_TEXTURE1_ARB);
+			glActiveTexture(GL_TEXTURE1);
 			TMgr->RenderBump();
-			glActiveTextureARB(GL_TEXTURE0_ARB);
+			glActiveTexture(GL_TEXTURE0);
 		}
 	} else {
 		TMgr->ShapeDesc = UNONE;
@@ -709,7 +709,8 @@ void RenderRasterize_Shader::render_node_floor_or_ceiling(clipping_window_data *
 			sign = -1;
 		}
 		glNormal3f(N[0], N[1], N[2]);
-		glMultiTexCoord4fARB(GL_TEXTURE1_ARB, T[0], T[1], T[2], sign);
+		glMultiTexCoord2f(GL_TEXTURE1, T[0], T[1]);
+		glMultiTexCoord2f(GL_TEXTURE2, T[2], sign);
 
 		GLfloat vertex_array[MAXIMUM_VERTICES_PER_POLYGON * 3];
 		GLfloat texcoord_array[MAXIMUM_VERTICES_PER_POLYGON * 2];
@@ -756,11 +757,11 @@ void RenderRasterize_Shader::render_node_floor_or_ceiling(clipping_window_data *
 		glVertexPointer(3, GL_FLOAT, 0, vertex_array);
 		glTexCoordPointer(2, GL_FLOAT, 0, texcoord_array);
 
-		glDrawArrays(GL_POLYGON, 0, vertex_count);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, vertex_count);
 
 		// see note 2 above; pulsate uniform should stay set from setupWall call
 		if (setupGlow(view, TMgr, 0, intensity, weaponFlare, selfLuminosity, offset, renderStep)) {
-			glDrawArrays(GL_POLYGON, 0, vertex_count);
+			glDrawArrays(GL_TRIANGLE_FAN, 0, vertex_count);
 		}
 
 		Shader::disable();
@@ -855,7 +856,8 @@ void RenderRasterize_Shader::render_node_side(clipping_window_data *window, vert
 			vec3 T(dx, dy, 0);
 			float sign = 1;
 			glNormal3f(N[0], N[1], N[2]);
-			glMultiTexCoord4fARB(GL_TEXTURE1_ARB, T[0], T[1], T[2], sign);
+			glMultiTexCoord2f(GL_TEXTURE1, T[0], T[1]);
+			glMultiTexCoord2f(GL_TEXTURE2, T[2], sign);
 
 			world_distance x = 0.0, y = 0.0;
 			instantiate_transfer_mode(view, surface->transfer_mode, x, y);
@@ -1015,7 +1017,7 @@ bool RenderModel(rectangle_definition& RenderRectangle, short Collection, short 
 		ModelPtr->Model.FindPositions_Neutral(true);	// Fallback: neutral (will do nothing for static models)
 
 	glVertexPointer(3,GL_FLOAT,0,ModelPtr->Model.PosBase());
-	glClientActiveTextureARB(GL_TEXTURE0_ARB);
+	glClientActiveTexture(GL_TEXTURE0);
 	if (ModelPtr->Model.TxtrCoords.empty()) {
 		glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	} else {
@@ -1025,7 +1027,7 @@ bool RenderModel(rectangle_definition& RenderRectangle, short Collection, short 
 	glEnableClientState(GL_NORMAL_ARRAY);
 	glNormalPointer(GL_FLOAT,0,ModelPtr->Model.NormBase());
 
-	glClientActiveTextureARB(GL_TEXTURE1_ARB);
+	glClientActiveTexture(GL_TEXTURE1);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	glTexCoordPointer(4,GL_FLOAT,sizeof(vec4),ModelPtr->Model.TangentBase());
 
@@ -1034,14 +1036,14 @@ bool RenderModel(rectangle_definition& RenderRectangle, short Collection, short 
 	}
 
 	if(TEST_FLAG(Get_OGL_ConfigureData().Flags, OGL_Flag_BumpMap)) {
-		glActiveTextureARB(GL_TEXTURE1_ARB);
+		glActiveTexture(GL_TEXTURE1);
 		if(ModelPtr->Use(CLUT,OGL_SkinManager::Bump)) {
 			LoadModelSkin(SkinPtr->OffsetImg, Collection, CLUT);
 		}
 		if (!SkinPtr->OffsetImg.IsPresent()) {
 			FlatBumpTexture();
 		}
-		glActiveTextureARB(GL_TEXTURE0_ARB);
+		glActiveTexture(GL_TEXTURE0);
 	}
 
 	glDrawElements(GL_TRIANGLES,(GLsizei)ModelPtr->Model.NumVI(),GL_UNSIGNED_SHORT,ModelPtr->Model.VIBase());
@@ -1067,7 +1069,7 @@ bool RenderModel(rectangle_definition& RenderRectangle, short Collection, short 
 
 	glDisableClientState(GL_NORMAL_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	glClientActiveTextureARB(GL_TEXTURE0_ARB);
+	glClientActiveTexture(GL_TEXTURE0);
 	if (ModelPtr->Model.TxtrCoords.empty()) {
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	}
@@ -1338,8 +1340,8 @@ void RenderRasterize_Shader::render_viewer_sprite_layer(RenderStep renderStep)
 
 struct ExtendedVertexData
 {
-	GLdouble Vertex[4];
-	GLdouble TexCoord[2];
+	GLfloat Vertex[4];
+	GLfloat TexCoord[2];
 	GLfloat Color[3];
 	GLfloat GlowColor[3];
 };
@@ -1424,12 +1426,12 @@ void RenderRasterize_Shader::render_viewer_sprite(rectangle_definition& RenderRe
         glDisable(GL_DEPTH_TEST);
 
 	// Location of data:
-	glVertexPointer(3,GL_DOUBLE,sizeof(ExtendedVertexData),ExtendedVertexList[0].Vertex);
-	glTexCoordPointer(2,GL_DOUBLE,sizeof(ExtendedVertexData),ExtendedVertexList[0].TexCoord);
+	glVertexPointer(3,GL_FLOAT,sizeof(ExtendedVertexData),ExtendedVertexList[0].Vertex);
+	glTexCoordPointer(2,GL_FLOAT,sizeof(ExtendedVertexData),ExtendedVertexList[0].TexCoord);
 	glEnable(GL_TEXTURE_2D);
 		
 	// Go!
-        glDrawArrays(GL_POLYGON,0,4);
+        glDrawArrays(GL_TRIANGLE_FAN,0,4);
 
         if (setupGlow(view, TMgr, 0, 1, weaponFlare, selfLuminosity, 0, renderStep)) {
             glDrawArrays(GL_QUADS, 0, 4);

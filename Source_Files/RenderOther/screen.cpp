@@ -994,10 +994,23 @@ static void change_screen_mode(int width, int height, int depth, bool nogl, bool
 		if (!context_created) {
 			SDL_GL_CreateContext(main_screen);
 			context_created = true;
+#ifdef __vita__
+			glUseProgram(0);
+			for (int _u = 0; _u < 8; _u++) glDisableVertexAttribArray(_u);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+			for (int _u = 3; _u >= 0; _u--) { glActiveTexture(GL_TEXTURE0 + _u); glBindTexture(GL_TEXTURE_2D, 0); }
+#endif
 		}
 #if defined (__WIN32__) && (HAVE_OPENGL)
 		glewInit();
 #endif
+#ifdef __vita__
+		// vitaGL shader extension strings differ from desktop GL; the
+		// shader compiler is provided separately via libshacccg. Skip
+		// the desktop-style extension check and assume shaders work.
+		passed_shader = true;
+#else
 		if (!OGL_CheckExtension("GL_ARB_vertex_shader") || !OGL_CheckExtension("GL_ARB_fragment_shader") || !OGL_CheckExtension("GL_ARB_shader_objects") || !OGL_CheckExtension("GL_ARB_shading_language_100"))
 		{
 			logWarning("OpenGL (Shader) renderer is not available");
@@ -1014,6 +1027,7 @@ static void change_screen_mode(int width, int height, int depth, bool nogl, bool
 		{
 			passed_shader = true;
 		}
+#endif
 	}
 //#endif
 
@@ -1088,6 +1102,13 @@ static void change_screen_mode(int width, int height, int depth, bool nogl, bool
 	if (!context_created && !nogl && screen_mode.acceleration != _no_acceleration) {
 		SDL_GL_CreateContext(main_screen);
 		context_created = true;
+#ifdef __vita__
+		glUseProgram(0);
+		for (int _u = 0; _u < 8; _u++) glDisableVertexAttribArray(_u);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		for (int _u = 3; _u >= 0; _u--) { glActiveTexture(GL_TEXTURE0 + _u); glBindTexture(GL_TEXTURE_2D, 0); }
+#endif
 	}
 #endif
 	} // end if need_window

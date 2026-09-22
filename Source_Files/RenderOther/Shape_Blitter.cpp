@@ -242,7 +242,7 @@ void Shape_Blitter::OGL_Draw(const Image_Rect& dst)
 		};
 		glVertexPointer(2, GL_FLOAT, 0, vertices);
 		glTexCoordPointer(2, GL_FLOAT, 0, texcoords);
-		glDrawArrays(GL_POLYGON, 0, 4);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 	}
     
     if (rotating)
