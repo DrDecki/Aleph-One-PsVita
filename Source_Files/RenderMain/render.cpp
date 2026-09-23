@@ -300,13 +300,17 @@ static RenderRasterizerClass Render_Classic2;
 static SDL_Thread *vr_thread = NULL;
 static SDL_sem *vr_go = NULL, *vr_done = NULL;
 static bool vr_failed = false;
+static float vr_split = 0.5f;
+static Uint64 vr_worker_ticks = 0;
 void sw_alloc_raster_tables(short **t0, short **t1, void **pre);
 
 static int vr_worker(void *)
 {
 	for (;;) {
 		SDL_SemWait(vr_go);
+		Uint64 _t0 = SDL_GetPerformanceCounter();
 		Render_Classic2.render_tree();
+		vr_worker_ticks = SDL_GetPerformanceCounter() - _t0;
 		SDL_SemPost(vr_done);
 	}
 	return 0;
@@ -325,7 +329,7 @@ static void vita_render_split(RenderRasterizerClass *RenPtr)
 	}
 	if (vr_failed || !Rasterizer_SW.screen) { RenPtr->render_tree(); return; }
 	short w = Rasterizer_SW.screen->width;
-	short mid = w / 2;
+	short mid = (short)(w * vr_split);
 	short *t0 = Rasterizer_SW2.vt0, *t1 = Rasterizer_SW2.vt1; void *pre = Rasterizer_SW2.vpre;
 	Rasterizer_SW2 = Rasterizer_SW;
 	Rasterizer_SW2.vt0 = t0; Rasterizer_SW2.vt1 = t1; Rasterizer_SW2.vpre = pre;
@@ -335,8 +339,16 @@ static void vita_render_split(RenderRasterizerClass *RenPtr)
 	Render_Classic2.RSPtr = RenPtr->RSPtr;
 	Render_Classic2.RasPtr = &Rasterizer_SW2;
 	SDL_SemPost(vr_go);
+	Uint64 _m0 = SDL_GetPerformanceCounter();
 	RenPtr->render_tree();
+	Uint64 _mt = SDL_GetPerformanceCounter() - _m0;
 	SDL_SemWait(vr_done);
+	{
+		double _tm = (double)_mt, _tw = (double)vr_worker_ticks;
+		if (_tm + _tw > 0) vr_split -= 0.15f * (float)((_tm - _tw) / (_tm + _tw));
+		if (vr_split < 0.15f) vr_split = 0.15f;
+		if (vr_split > 0.85f) vr_split = 0.85f;
+	}
 	Rasterizer_SW.clip_active = false;
 }
 #endif
