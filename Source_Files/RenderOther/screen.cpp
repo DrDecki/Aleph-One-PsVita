@@ -156,6 +156,7 @@ static void clear_screen_margin();
 
 #ifdef __vita__
 #include <psp2/kernel/clib.h>
+#include <psp2/display.h>
 #endif
 SDL_PixelFormat pixel_format_16, pixel_format_32;
 
@@ -2726,6 +2727,18 @@ void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 		SDL_RenderCopy(main_render, main_texture, NULL, NULL);
 	}
 #ifdef VITA_PERF_LOG
+	if (_gpu && graphics_preferences->fps_target == 30) {
+		int _iv = 2;
+		{
+			static int _last_vc = 0;
+			int _vc = sceDisplayGetVcount();
+			while ((int)(_vc - _last_vc) < _iv) {
+				sceDisplayWaitVblankStart();
+				_vc = sceDisplayGetVcount();
+			}
+			_last_vc = _vc;
+		}
+	}
 	Uint64 _pf_t2 = SDL_GetPerformanceCounter();
 #endif
 	SDL_RenderPresent(main_render);
