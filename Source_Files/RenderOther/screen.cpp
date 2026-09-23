@@ -1320,6 +1320,50 @@ static int g_diag_full=0, g_diag_hud=0; static double g_diag_fill_ms=0;
 static double g_pf_3d=0;
 static int g_diag_us_hirez=0, g_diag_us_else=0, g_diag_us_skip=0;
 #endif
+#ifdef __vita__
+static SDL_Thread *vita_hud_thread = NULL;
+static SDL_sem *vita_hud_go = NULL, *vita_hud_done = NULL;
+static short vita_hud_ticks = 0;
+static bool vita_hud_running = false;
+static bool vita_hud_drawn = false;
+static bool vita_hud_early_clear = false;
+#define VITA_HUD_DRAWN vita_hud_drawn
+
+static int vita_hud_worker(void *)
+{
+	for (;;) {
+		SDL_SemWait(vita_hud_go);
+		Lua_DrawHUD(vita_hud_ticks);
+		SDL_SemPost(vita_hud_done);
+	}
+	return 0;
+}
+
+static bool vita_hud_start(short ticks)
+{
+	if (!vita_hud_thread) {
+		vita_hud_go = SDL_CreateSemaphore(0);
+		vita_hud_done = SDL_CreateSemaphore(0);
+		vita_hud_thread = SDL_CreateThreadWithStackSize(vita_hud_worker, "vita_hud", 1024 * 1024, NULL);
+		if (!vita_hud_thread) return false;
+	}
+	vita_hud_ticks = ticks;
+	vita_hud_running = true;
+	SDL_SemPost(vita_hud_go);
+	return true;
+}
+
+static void vita_hud_join(void)
+{
+	if (!vita_hud_running) return;
+	SDL_SemWait(vita_hud_done);
+	vita_hud_running = false;
+	vita_hud_drawn = true;
+}
+#else
+#define VITA_HUD_DRAWN false
+#endif
+
 void render_screen(short ticks_elapsed)
 {
 	// Make whatever changes are necessary to the world_view structure based on whichever player is frontmost
@@ -1525,9 +1569,28 @@ void render_screen(short ticks_elapsed)
 	
 	// Render world view
 #ifdef __vita__
+	vita_hud_drawn = false;
+	vita_hud_early_clear = false;
+	if (screen_mode.acceleration == _no_acceleration && Screen::instance()->hud() && Screen::instance()->lua_hud()
+		&& !world_view->overhead_map_active && !world_view->terminal_mode_active && main_surface && vita_top_clean) {
+		SDL_Rect _wr = Screen::instance()->window_rect();
+		SDL_Rect _vr = Screen::instance()->view_rect();
+		if (_vr.x == _wr.x && _vr.y == _wr.y && _vr.w == _wr.w && _vr.h == _wr.h) {
+			SDL_Rect _hud = Screen::instance()->hud_rect();
+			_hud.x = 0; _hud.w = main_surface->w;
+			if (_hud.y < 0) { _hud.h += _hud.y; _hud.y = 0; }
+			if (_hud.y + _hud.h > main_surface->h) _hud.h = main_surface->h - _hud.y;
+			if (_hud.w > 0 && _hud.h > 0) {
+				SDL_FillRect(main_surface, &_hud, 0);
+				vita_hud_dirty = _hud; vita_hud_dirty_valid = true;
+				if (vita_hud_start(ticks_elapsed)) vita_hud_early_clear = true;
+			}
+		}
+	}
 	Uint64 _pf3a = SDL_GetPerformanceCounter();
 	render_view(world_view, software_render_dest.get());
 	g_pf_3d += (double)(SDL_GetPerformanceCounter()-_pf3a)/SDL_GetPerformanceFrequency()*1000.0;
+	vita_hud_join();
 #else
 	render_view(world_view, software_render_dest.get());
 #endif
@@ -1635,7 +1698,7 @@ void render_screen(short ticks_elapsed)
 		}
 		
 		// Update HUD
-		if (Screen::instance()->lua_hud())
+		if (Screen::instance()->lua_hud() && !VITA_HUD_DRAWN)
 		{
 #ifdef VITA_PERF_LOG
 			Uint64 _pfha = SDL_GetPerformanceCounter();
@@ -1950,7 +2013,7 @@ static void update_screen(SDL_Rect &source, SDL_Rect &destination, bool hi_rez, 
 				vita_hud_dirty_valid = false;
 				g_diag_full++;
 			} else if (_hud.w > 0 && _hud.h > 0) {
-				SDL_FillRect(main_surface, &_hud, 0);
+				if (!vita_hud_early_clear) SDL_FillRect(main_surface, &_hud, 0);
 				vita_hud_dirty = _hud; vita_hud_dirty_valid = true;
 				g_diag_hud++;
 			} else {
@@ -2565,6 +2628,7 @@ void MainScreenUpdateRect(int x, int y, int w, int h)
 void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 {
 #ifdef __vita__
+	vita_hud_join();
 	static Uint64 _pf_freq = SDL_GetPerformanceFrequency();
 	static Uint64 _pf_last = 0;
 	static double _pf_af=0,_pf_au=0,_pf_ac=0,_pf_ap=0; static int _pf_fc=0;
