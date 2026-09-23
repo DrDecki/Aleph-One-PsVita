@@ -234,6 +234,9 @@ extern WindowPtr screen_window;
 #include "RenderPlaceObjs.h"
 #include "RenderRasterize.h"
 #include "Rasterizer_SW.h"
+#ifdef __vita__
+#include <SDL.h>
+#endif
 #ifdef HAVE_OPENGL
 #include "Rasterizer_OGL.h"
 #include "RenderRasterize_Shader.h"
@@ -290,6 +293,53 @@ static RenderPlaceObjsClass RenderPlaceObjs;		// Object-placement object
 static RenderRasterizerClass Render_Classic;		// Clipping and rasterization class
 
 static Rasterizer_SW_Class Rasterizer_SW;			// Software rasterizer
+
+#ifdef __vita__
+static Rasterizer_SW_Class Rasterizer_SW2;
+static RenderRasterizerClass Render_Classic2;
+static SDL_Thread *vr_thread = NULL;
+static SDL_sem *vr_go = NULL, *vr_done = NULL;
+static bool vr_failed = false;
+void sw_alloc_raster_tables(short **t0, short **t1, void **pre);
+
+static int vr_worker(void *)
+{
+	for (;;) {
+		SDL_SemWait(vr_go);
+		Render_Classic2.render_tree();
+		SDL_SemPost(vr_done);
+	}
+	return 0;
+}
+
+static void vita_render_split(RenderRasterizerClass *RenPtr)
+{
+	if (!vr_thread && !vr_failed) {
+		short *t0, *t1; void *pre;
+		sw_alloc_raster_tables(&t0, &t1, &pre);
+		Rasterizer_SW2.vt0 = t0; Rasterizer_SW2.vt1 = t1; Rasterizer_SW2.vpre = pre;
+		vr_go = SDL_CreateSemaphore(0);
+		vr_done = SDL_CreateSemaphore(0);
+		vr_thread = SDL_CreateThreadWithStackSize(vr_worker, "vita_render", 512 * 1024, NULL);
+		if (!vr_thread) vr_failed = true;
+	}
+	if (vr_failed || !Rasterizer_SW.screen) { RenPtr->render_tree(); return; }
+	short w = Rasterizer_SW.screen->width;
+	short mid = w / 2;
+	short *t0 = Rasterizer_SW2.vt0, *t1 = Rasterizer_SW2.vt1; void *pre = Rasterizer_SW2.vpre;
+	Rasterizer_SW2 = Rasterizer_SW;
+	Rasterizer_SW2.vt0 = t0; Rasterizer_SW2.vt1 = t1; Rasterizer_SW2.vpre = pre;
+	Rasterizer_SW2.clip_xmin = mid; Rasterizer_SW2.clip_xmax = w; Rasterizer_SW2.clip_active = true;
+	Rasterizer_SW.clip_xmin = 0; Rasterizer_SW.clip_xmax = mid; Rasterizer_SW.clip_active = true;
+	Render_Classic2.view = RenPtr->view;
+	Render_Classic2.RSPtr = RenPtr->RSPtr;
+	Render_Classic2.RasPtr = &Rasterizer_SW2;
+	SDL_SemPost(vr_go);
+	RenPtr->render_tree();
+	SDL_SemWait(vr_done);
+	Rasterizer_SW.clip_active = false;
+}
+#endif
 #ifdef HAVE_OPENGL
 static Rasterizer_OGL_Class Rasterizer_OGL;			// OpenGL rasterizer
 static Rasterizer_Shader_Class Rasterizer_Shader;   // Shader rasterizer
@@ -494,6 +544,11 @@ void render_view(
 				it to the texture-mapping code */
 			RenPtr->view = view;
 			RenPtr->RasPtr = RasPtr;
+#ifdef __vita__
+			if (RasPtr == &Rasterizer_SW)
+				vita_render_split(RenPtr);
+			else
+#endif
 			RenPtr->render_tree();
 			
 			// LP: won't put this into a separate class
