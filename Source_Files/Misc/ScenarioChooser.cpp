@@ -28,6 +28,7 @@ static SDL_Renderer *vita_chooser_renderer = nullptr;
 static SDL_Texture *vita_chooser_texture = nullptr;
 static SDL_Surface *vita_chooser_canvas = nullptr;
 static bool vita_chooser_dirty = true;
+static int vita_chooser_last_sel = -1, vita_chooser_last_scroll = -1;
 static SDL_PixelFormat *vita_chooser_format()
 {
 	static SDL_PixelFormat *f = SDL_AllocFormat(SDL_PIXELFORMAT_ABGR8888);
@@ -267,9 +268,6 @@ std::pair<std::string, bool> ScenarioChooser::run()
 		while (SDL_PollEvent(&e))
 		{
 			handle_event(e);
-#ifdef __vita__
-			vita_chooser_dirty = true;
-#endif
 		}
 
 		redraw(window.get());
@@ -596,6 +594,7 @@ void ScenarioChooser::redraw(SDL_Window* window)
 		vita_chooser_canvas = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ABGR8888);
 		vita_chooser_dirty = true;
 	}
+	if (selection_ != vita_chooser_last_sel || scroll_ != vita_chooser_last_scroll) vita_chooser_dirty = true;
 	if (!vita_chooser_dirty)
 	{
 		SDL_RenderCopy(vita_chooser_renderer, vita_chooser_texture, nullptr, nullptr);
@@ -603,6 +602,7 @@ void ScenarioChooser::redraw(SDL_Window* window)
 		return;
 	}
 	vita_chooser_dirty = false;
+	vita_chooser_last_sel = selection_; vita_chooser_last_scroll = scroll_;
 	auto surface = vita_chooser_canvas;
 #else
 	auto surface = SDL_GetWindowSurface(window);
