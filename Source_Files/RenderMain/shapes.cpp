@@ -751,6 +751,9 @@ static bool load_collection(short collection_index, bool strip)
 	std::shared_ptr<SDL_RWops> m1_p; // automatic deallocation
 	LoadedResource r;
 	int32 src_offset;
+#ifdef __vita__
+	std::vector<uint8> vita_buf;
+#endif
 
 	collection_header *header = get_collection_header(collection_index);
 	
@@ -783,6 +786,20 @@ static bool load_collection(short collection_index, bool strip)
 		p = ShapesFile.GetRWops();
 		ShapesFile.SetPosition(0);
 		src_offset += SDL_RWtell(p);
+#ifdef __vita__
+		{
+			// Read the whole collection at once; many small reads are very slow on the memory card
+			int32 len = (bit_depth == 8 || header->offset16 == -1) ? header->length : header->length16;
+			if (len > 0) {
+				vita_buf.resize(len);
+				if (SDL_RWseek(p, src_offset, RW_SEEK_SET) >= 0 && SDL_RWread(p, vita_buf.data(), 1, len) == (size_t)len) {
+					m1_p.reset(SDL_RWFromConstMem(vita_buf.data(), len), SDL_FreeRW);
+					p = m1_p.get();
+					src_offset = 0;
+				}
+			}
+		}
+#endif
 	}
 
 	// Read collection definition

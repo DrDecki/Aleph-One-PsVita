@@ -210,8 +210,22 @@ void allocate_texture_tables(
 	fc_assert(scratch_table0&&scratch_table1&&precalculation_table);
 }
 
+#ifdef __vita__
+void sw_alloc_raster_tables(short **t0, short **t1, void **pre)
+{
+	*t0 = new short[MAXIMUM_SCRATCH_TABLE_ENTRIES];
+	*t1 = new short[MAXIMUM_SCRATCH_TABLE_ENTRIES];
+	*pre = (void*)new char[MAXIMUM_PRECALCULATION_TABLE_ENTRY_SIZE*MAXIMUM_SCRATCH_TABLE_ENTRIES];
+}
+#endif
+
 void Rasterizer_SW_Class::texture_horizontal_polygon(polygon_definition& textured_polygon)
 {
+#ifdef __vita__
+	short *scratch_table0 = vt0 ? vt0 : ::scratch_table0;
+	short *scratch_table1 = vt1 ? vt1 : ::scratch_table1;
+	void *precalculation_table = vpre ? vpre : ::precalculation_table;
+#endif
 	polygon_definition *polygon = &textured_polygon;	// Reference to pointer
 	short vertex, highest_vertex, lowest_vertex;
 	point2d *vertices= polygon->vertices;
@@ -303,6 +317,22 @@ void Rasterizer_SW_Class::texture_horizontal_polygon(polygon_definition& texture
 		/* make sure every coordinate is accounted for in our tables */
 		fc_assert(aggregate_right_line_count==aggregate_total_line_count);
 		fc_assert(aggregate_left_line_count==aggregate_total_line_count);
+#ifdef __vita__
+		if (clip_active)
+		{
+			for (int _i = 0; _i < aggregate_total_line_count; _i++)
+			{
+				short _l = left_table[_i], _r = right_table[_i];
+				bool _fwd = _l <= _r;
+				short _lo = _fwd ? _l : _r, _hi = _fwd ? _r : _l;
+				if (_lo < clip_xmin) _lo = clip_xmin;
+				if (_hi > clip_xmax) _hi = clip_xmax;
+				if (_hi < _lo) _hi = _lo;
+				if (_fwd) { left_table[_i] = _lo; right_table[_i] = _hi; }
+				else { left_table[_i] = _hi; right_table[_i] = _lo; }
+			}
+		}
+#endif
 
 		/* precalculate mode-specific data */
 		switch (polygon->transfer_mode)
@@ -427,6 +457,11 @@ void Rasterizer_SW_Class::texture_horizontal_polygon(polygon_definition& texture
 
 void Rasterizer_SW_Class::texture_vertical_polygon(polygon_definition& textured_polygon)
 {
+#ifdef __vita__
+	short *scratch_table0 = vt0 ? vt0 : ::scratch_table0;
+	short *scratch_table1 = vt1 ? vt1 : ::scratch_table1;
+	void *precalculation_table = vpre ? vpre : ::precalculation_table;
+#endif
 	polygon_definition *polygon = &textured_polygon;	// Reference to pointer
 	short vertex, highest_vertex, lowest_vertex;
 	point2d *vertices= polygon->vertices;
@@ -519,12 +554,26 @@ void Rasterizer_SW_Class::texture_vertical_polygon(polygon_definition& textured_
 		/* make sure every coordinate is accounted for in our tables */
 		fc_assert(aggregate_right_line_count==aggregate_total_line_count);
 		fc_assert(aggregate_left_line_count==aggregate_total_line_count);
+		short _vx0 = vertices[highest_vertex].x;
+#ifdef __vita__
+		if (clip_active)
+		{
+			int _xs = _vx0, _xe = _vx0 + aggregate_total_line_count;
+			if (_xs < clip_xmin) _xs = clip_xmin;
+			if (_xe > clip_xmax) _xe = clip_xmax;
+			if (_xe <= _xs) return;
+			int _off = _xs - _vx0;
+			left_table += _off; right_table += _off;
+			aggregate_total_line_count = (short)(_xe - _xs);
+			_vx0 = (short)_xs;
+		}
+#endif
 
 		/* precalculate mode-specific data */
 
           if ((polygon->transfer_mode == _textured_transfer) || (polygon->transfer_mode == _static_transfer))
           {
-			  TEXBITS_DISPATCH(polygon->texture, _pretexture_vertical_polygon_lines, (polygon, screen, view, (struct _vertical_polygon_data *)precalculation_table, vertices[highest_vertex].x, left_table, right_table, aggregate_total_line_count));
+			  TEXBITS_DISPATCH(polygon->texture, _pretexture_vertical_polygon_lines, (polygon, screen, view, (struct _vertical_polygon_data *)precalculation_table, _vx0, left_table, right_table, aggregate_total_line_count));
           }
           else VHALT_DEBUG(csprintf(temporary, "vertical_polygons dont support mode #%d", polygon->transfer_mode));
           
@@ -656,6 +705,19 @@ void Rasterizer_SW_Class::texture_vertical_polygon(polygon_definition& textured_
 
 void Rasterizer_SW_Class::texture_rectangle(rectangle_definition& textured_rectangle)
 {
+#ifdef __vita__
+	short *scratch_table0 = vt0 ? vt0 : ::scratch_table0;
+	short *scratch_table1 = vt1 ? vt1 : ::scratch_table1;
+	void *precalculation_table = vpre ? vpre : ::precalculation_table;
+#endif
+#ifdef __vita__
+	if (clip_active)
+	{
+		if (textured_rectangle.clip_left < clip_xmin) textured_rectangle.clip_left = clip_xmin;
+		if (textured_rectangle.clip_right > clip_xmax) textured_rectangle.clip_right = clip_xmax;
+		if (textured_rectangle.clip_right <= textured_rectangle.clip_left) return;
+	}
+#endif
 	rectangle_definition *rectangle = &textured_rectangle;	// Reference to pointer
 
 	if (rectangle->x0<rectangle->x1 && rectangle->y0<rectangle->y1)
