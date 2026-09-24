@@ -17,6 +17,9 @@ target_link_libraries(alephone
     -Wl,--wrap=calloc
     -Wl,--wrap=realloc
     -Wl,--wrap=memalign
+    -Wl,--wrap=abort
+    -Wl,--wrap=exit
+    -Wl,--wrap=__assert_func
     -Wl,--allow-multiple-definition
     -Wl,--start-group
     ${CMAKE_SOURCE_DIR}/Source_Files/CSeries/libcseries.a

@@ -115,3 +115,36 @@ void *__wrap_realloc(void *ptr, size_t size)
     }
     return __real_realloc(ptr, size);
 }
+
+#include <stdio.h>
+void __real_abort(void) __attribute__((noreturn));
+void __real_exit(int code) __attribute__((noreturn));
+void __real___assert_func(const char *file, int line, const char *func, const char *expr) __attribute__((noreturn));
+
+static void hg_log_exit(const char *what, void *ra, const char *extra)
+{
+    FILE *f = fopen("ux0:/data/AlephOne/exit_log.txt", "a");
+    if (f) { fprintf(f, "%s ra=%p %s\n", what, ra, extra ? extra : ""); fclose(f); }
+}
+
+void __wrap_abort(void)
+{
+    hg_log_exit("abort", __builtin_return_address(0), 0);
+    __real_abort();
+}
+
+void __wrap_exit(int code)
+{
+    char b[32];
+    snprintf(b, sizeof b, "code=%d", code);
+    hg_log_exit("exit", __builtin_return_address(0), b);
+    __real_exit(code);
+}
+
+void __wrap___assert_func(const char *file, int line, const char *func, const char *expr)
+{
+    char b[512];
+    snprintf(b, sizeof b, "%s:%d %s: %s", file ? file : "", line, func ? func : "", expr ? expr : "");
+    hg_log_exit("assert", __builtin_return_address(0), b);
+    __real___assert_func(file, line, func, expr);
+}
