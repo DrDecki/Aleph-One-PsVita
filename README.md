@@ -9,7 +9,7 @@ You need a PS Vita or PS TV with HENkaku or Enso and [VitaShell](https://github.
 1. Install `alephone.vpk` with VitaShell.
 2. Download the games you want from the [Aleph One scenarios page](https://alephone.lhowon.org/scenarios.html). All three Marathon games are free.
 3. Unzip them on your PC and copy every game into its own folder inside `ux0:data/AlephOne/`.
-4. Copy the contents of `AlephOne.zip` into `ux0:data/AlephOne/`.
+4. Copy the contents of `AlephOne.zip` into `ux0:data/`.
 5. Start Aleph One from the LiveArea and choose a game.
 
 When you're done, the folder should look like this:
