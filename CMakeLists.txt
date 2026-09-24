@@ -4,6 +4,7 @@ include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__vita__ -Wno-error")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__vita__")
 add_executable(alephone
+    Source_Files/heap_guard.c
     Source_Files/vita_init.c
     Source_Files/shell.o
     Source_Files/shell_misc.o
@@ -11,6 +12,14 @@ add_executable(alephone
     Source_Files/main.o
 )
 target_link_libraries(alephone
+    -Wl,--wrap=malloc
+    -Wl,--wrap=free
+    -Wl,--wrap=calloc
+    -Wl,--wrap=realloc
+    -Wl,--wrap=memalign
+    -Wl,--wrap=abort
+    -Wl,--wrap=exit
+    -Wl,--wrap=__assert_func
     -Wl,--allow-multiple-definition
     -Wl,--start-group
     ${CMAKE_SOURCE_DIR}/Source_Files/CSeries/libcseries.a
@@ -38,7 +47,7 @@ target_link_libraries(alephone
     -Wl,--end-group
 )
 vita_create_self(eboot.bin alephone UNSAFE)
-vita_create_vpk(alephone-vita.vpk ALPH00001 eboot.bin
+vita_create_vpk(alephone.vpk ALPH00001 eboot.bin
   VERSION "01.00"
   NAME "Aleph One"
   FILE

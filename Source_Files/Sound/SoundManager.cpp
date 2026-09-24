@@ -80,9 +80,21 @@ private:
 			
 			return n;
 		}
+
+		bool in_use() {
+			for (std::vector<std::shared_ptr<SoundData> >::iterator it = data.begin(); it != data.end(); ++it)
+			{
+				if (it->get() && it->use_count() > 1)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
 	};
 
-	void ReleaseOldestSound();
+	bool ReleaseOldestSound();
 	std::map<short, Entry> m_entries;
 	std::size_t m_size;
 	std::size_t m_max_size;
@@ -98,7 +110,10 @@ void SoundMemoryManager::Add(std::shared_ptr<SoundData> data, short index, short
 	while (m_size > m_max_size)
 	{
 		std::cerr << "Size is too big (" << m_size << ">" << m_max_size << ")" << std::endl;
-		ReleaseOldestSound();
+		if (!ReleaseOldestSound())
+		{
+			break;
+		}
 	}
 }
 
@@ -112,26 +127,31 @@ void SoundMemoryManager::Release(short index)
 	m_entries.erase(index);
 }
 
-void SoundMemoryManager::ReleaseOldestSound()
+bool SoundMemoryManager::ReleaseOldestSound()
 {
-	if (!m_entries.size())
+	std::map<short, Entry>::iterator oldest_sound = m_entries.end();
+
+	for (std::map<short, Entry>::iterator it = m_entries.begin(); it != m_entries.end(); ++it)
 	{
-		return;
-	}
-	
-	std::map<short, Entry>::iterator oldest_sound = m_entries.begin();
-	std::map<short, Entry>::iterator it = oldest_sound;
-	++it;
-	for (; it != m_entries.end(); ++it)
-	{
-		if (it->second.last_played < oldest_sound->second.last_played)
+		if (it->second.in_use())
+		{
+			continue;
+		}
+
+		if (oldest_sound == m_entries.end() || it->second.last_played < oldest_sound->second.last_played)
 		{
 			oldest_sound = it;
 		}
 	}
 
+	if (oldest_sound == m_entries.end())
+	{
+		return false;
+	}
+
 	std::cerr << "Dropping sound " << oldest_sound->first << std::endl;
 	Release(oldest_sound->first);
+	return true;
 }
 
 void SoundMemoryManager::Update(short index)

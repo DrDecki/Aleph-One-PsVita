@@ -36,6 +36,12 @@ public:
 	view_data *view;
 	// Calling this one "screen" for scottish_textures convenience:
 	bitmap_definition *screen;
+#ifdef __vita__
+	short *vt0 = nullptr, *vt1 = nullptr;
+	void *vpre = nullptr;
+	short clip_xmin = 0, clip_xmax = 32767;
+	bool clip_active = false;
+#endif
 
 	// Sets the rasterizer's view data;
 	// be sure to call it before doing any rendering
