@@ -19,7 +19,7 @@
 
 */
 
-#define VITA_PERF_LOG 1
+// #define VITA_PERF_LOG 1
 
 
 /*
@@ -2726,7 +2726,6 @@ void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 	} else {
 		SDL_RenderCopy(main_render, main_texture, NULL, NULL);
 	}
-#ifdef VITA_PERF_LOG
 	if (_gpu && graphics_preferences->fps_target == 30) {
 		int _iv = 2;
 		{
@@ -2739,6 +2738,7 @@ void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 			_last_vc = _vc;
 		}
 	}
+#ifdef VITA_PERF_LOG
 	Uint64 _pf_t2 = SDL_GetPerformanceCounter();
 #endif
 	SDL_RenderPresent(main_render);
