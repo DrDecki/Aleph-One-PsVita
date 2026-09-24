@@ -1,68 +1,30 @@
-# Aleph One for PS Vita (Marathon Trilogy)
+# Aleph One Vita
 
-This is a native PS Vita port of Aleph One, the open source engine for
-Bungie's _Marathon_, _Marathon 2: Durandal_ and _Marathon Infinity_. All
-three games run in high resolution with a widescreen presentation tailored
-to the Vita's screen. Third-party scenarios (Eternal, Rubicon, Tempus Irae,
-etc.) are supported as well.
+This is a native port of Aleph One for the PS Vita. Aleph One is the open source engine behind Bungie's *Marathon*, *Marathon 2: Durandal* and *Marathon Infinity*, and it also runs a huge library of fan made scenarios like *Eternal*, *Rubicon X* or *Marathon Phoenix*.
 
-## Requirements
+The games run at the Vita's native 960x544 resolution with a stable 30 FPS. Everything is set up for the Vita automatically the first time you start a game, so you can just pick one and play.
 
-- A PS Vita or PS TV with custom firmware (HENkaku / Ensō).
-- A way to install VPK files, e.g. [VitaShell](https://github.com/TheOfficialFloW/VitaShell).
+## Installation
 
-## 1. Install the app
+You need a PS Vita or PS TV with HENkaku or Enso and [VitaShell](https://github.com/TheOfficialFloW/VitaShell/releases).
 
-1. Copy `alephone.vpk` to your Vita (for example to `ux0:/`).
-2. Open VitaShell, highlight the VPK, press **X** and confirm the install.
-3. Aleph One now appears on the LiveArea home screen.
+1. Install `alephone.vpk` with VitaShell.
+2. Download the games you want from the [Aleph One scenarios page](https://alephone.lhowon.org/scenarios.html). All three Marathon games are free.
+3. Unzip them on your PC and copy every game into its own folder inside `ux0:data/AlephOne/`.
+4. Copy the contents of `AlephOne.zip` into `ux0:data/AlephOne/`.
+5. Start Aleph One from the LiveArea and choose a game.
 
-## 2. Add the game data
+When you're done, the folder should look like this:
 
-The engine ships **without** any game data, you have to provide the
-scenario files yourself. They are **not** included in this download.
+    ux0:data/AlephOne/Lua/
+    ux0:data/AlephOne/Plugins/
+    ux0:data/AlephOne/Marathon/
+    ux0:data/AlephOne/Marathon 2/
+    ux0:data/AlephOne/Marathon Infinity/
 
-The three official Marathon games are free and can be downloaded from the
-official Aleph One website:
+Each game folder has to contain the game files directly, like Map, Shapes and Sounds. If you find another folder with the same name inside it, move its contents one level up.
 
-  https://alephone.lhowon.org/scenarios.html
-
-Download the scenarios you want and copy each one into its own folder under:
-
-    ux0:/data/AlephOne/
-
-The result should look like this:
-
-    ux0:/data/AlephOne/Marathon/
-    ux0:/data/AlephOne/Marathon 2/
-    ux0:/data/AlephOne/Marathon Infinity/
-
-Each scenario folder must contain that game's data files (Maps, Shapes,
-Sounds, Images, etc.), i.e. the contents that come inside the downloaded
-scenario, not another folder wrapped around them.
-
-### Third-party scenarios
-
-Community scenarios (Eternal, Rubicon X, Tempus Irae, Marathon Phoenix,
-etc.) work the same way. Obtain them from their respective authors and place
-each one in its own folder next to the others:
-
-    ux0:/data/AlephOne/<Scenario Name>/
-
-You are responsible for obtaining these files from their original sources.
-
-## Notes
-
-- On first launch every scenario is configured automatically for the Vita:
-  960x544, high resolution, 90° field of view, normal brightness, 32-bit
-  color and unlimited frame rate.
-- The controls are mapped to the Vita out of the box: left stick to move,
-  right stick to look, **R** to fire, **L** for the secondary trigger,
-  **Cross** to act/interact, **Circle** for the next weapon, **Square**
-  for the map, **Triangle** to open the cheat console, left/right on the
-  D-pad to glance, and up/down on the D-pad to zoom the map.
-- If a scenario ever shows the wrong settings, delete its preferences file
-  in `ux0:/data/AlephOne/` and relaunch to regenerate the Vita defaults.
+Fan scenarios work the same way. Give each one its own folder next to the others.
 
 ## Cheats
 
@@ -70,8 +32,7 @@ The port ships with a built-in cheat console, available in every scenario.
 It requires the `Lua/Cheats.lua` file from the data package
 (`AlephOne.zip`) to be installed under `ux0:/data/AlephOne/`.
 
-Press **Triangle** in-game, type a command (including the parentheses)
-and confirm with Enter:
+Press **Triangle** in-game, type a command and confirm with Enter:
 
 | Command | Effect |
 | --- | --- |
@@ -100,138 +61,6 @@ and confirm with Enter:
 If the console gets stuck after closing the keyboard without input, press
 **Triangle** and confirm an empty line with Enter to reset it.
 
----
+## License
 
-# Aleph One
-
-Aleph One is the open source continuation of Bungie™’s _Marathon® 2_ and _Marathon Infinity_ game engines. Aleph One plays _Marathon_, _Marathon 2_, _Marathon Infinity_, and third-party content on a variety of platforms.
-
-Aleph One is available under the terms of the [GNU General Public License (GPL 3)](http://www.gnu.org/licenses/gpl-3.0.html)
-
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white)](https://discord.gg/NvF3pdV)     [![Steam](https://img.shields.io/badge/steam-%23000000.svg?style=for-the-badge&logo=steam&logoColor=white)](https://store.steampowered.com/developer/alephone)
-
-# Download
-
-To download ready-to-run versions of all three _Marathon_ games for macOS,
-Windows, and Linux Flatpak, visit
-[alephone.lhowon.org](https://alephone.lhowon.org)
-
-# Build from source
-
-## CI status
-
-[![Build Status](https://github.com/Aleph-One-Marathon/alephone/actions/workflows/ci-build.yml/badge.svg)](https://github.com/Aleph-One-Marathon/alephone/actions/workflows/ci-build.yml?query=branch%3Amaster+)
-
-## Scenario data
-
-If you only want an Aleph One executable, you can simply download and untar a release source tarball. However, to build all-in-one Mac apps, flatpaks, or Windows zip files, you will need to populate the data/Scenarios directory. The easiest way to do that is to clone the repository and submodules:
-
-    git clone --recurse-submodules https://github.com/Aleph-One-Marathon/alephone.git
-
-Alternatively, you can download the [data files](https://alephone.lhowon.org/scenarios.html) and unzip them in the data/Scenarios/ directory.
-
-## macOS
-
-These instructions assume familiarity with the Xcode tools and the macOS command line.
-
-macOS dependencies are managed by [vcpkg](https://github.com/microsoft/vcpkg).
-
-Some users have had issues building Aleph One when there are spaces in the path to vcpkg and alephone, so it is recommended to put them in paths without spaces.
-
-Download, bootstrap, and install vcpkg:
-
-    git clone https://github.com/microsoft/vcpkg
-    ./vcpkg/bootstrap-vcpkg.sh
-    ./vcpkg/vcpkg integrate install
-
-`cd` into Aleph One's vcpkg subdirectory and use the `install-arm-osx.sh` and `install-x64-osx.sh` scripts to install macOS dependencies for arm64 and x64.
-
-You should now be able to open `PBProjects/AlephOne.xcodeproj` in Xcode and build Aleph One.
-
-## Windows
-
-Windows builds are built using [Visual Studio](https://visualstudio.microsoft.com/vs/)
-
-Windows dependencies are managed by [vcpkg](https://github.com/microsoft/vcpkg).
-
-Note this important recommendation in the vcpkg getting-started guide: _If installing globally, we recommend a short install path like: C:\src\vcpkg or C:\dev\vcpkg, since otherwise you may run into path issues for some port build systems._ Spaces in the path and non-ASCII characters can also cause problems. These notes apply to the Aleph One source location as well.
-
-Download, bootstrap, and install vcpkg:
-
-    git clone https://github.com/microsoft/vcpkg.git
-    .\vcpkg\bootstrap-vcpkg.bat
-    .\vcpkg integrate install
-
-You should now be able to build Aleph One using the `VisualStudio\AlephOne.sln` project file
-
-## Linux/FreeBSD/other
-
-Linux/FreeBSD/other builds are built using autoconf. If you downloaded a source tarball, the configure system is already set up for you. If you cloned from git, you first need to set up the configure system. Install `autoconf` and `autoconf-archive` from your distro package manager, then:
-
-    autoreconf -i
-
-### Dependencies
-
-Aleph One requires a C++17 compiler and the following libraries:
-
-+ `ASIO`
-+ `Boost`
-+ `SDL2`
-+ `SDL2_image`
-+ `SDL2_ttf`
-+ `zlib`
-+ `libsndfile`
-+ `openal-soft`
-
-These libraries are recommended for full features and third-party scenario compatibility:
-
-+ `curl` _for stats upload to lhowon.org_
-+ `miniupnpc` _for opening router ports_
-+ `zziplib` _for using zipped plugins_
-+ `vpx` _for film export_
-+ `matroska` _for film export_
-+ `ebml` _for film export_
-+ `vorbis` _for film export_
-+ `libyuv` _for film export and video playback_
-
-#### Fedora
-
-First, enable the [RPM Fusion Repository](http://rpmfusion.org/Configuration).
-
-Then, install the following packages.
-
-    sudo dnf install boost-devel curl-devel gcc-c++ \
-      libpng-devel SDL2-devel SDL2_ttf-devel SDL2_image-devel asio-devel \
-      zziplib-devel miniupnpc-devel openal-soft-devel libsndfile-devel
-
-#### Ubuntu
-
-Run this command to install the necessary prerequisites for building Aleph One:
-
-    sudo apt install build-essential libboost-all-dev libsdl2-dev \
-      libsdl2-image-dev libasio-dev libsdl2-ttf-dev libzzip-dev \
-      libpng-dev libcurl4-gnutls-dev libminiupnpc-dev libopenal-dev \
-      libsndfile1-dev libglu1-dev libvpx-dev libmatroska-dev libebml-dev \
-      libvorbis-dev libvorbisenc2 libyuv-dev
-
-### Compile
-
-First, run the configure script:
-
-    ./configure
-
-After running the configure script, start the compile process by running make:
-
-    make
-
-Once the compile is finished, you can install the executable by running:
-
-    sudo make install
-
-By default, the Aleph One executable is installed into `/usr/local/bin/alephone`.
-
-### Run
-
-You can download game data from the [Aleph One Scenarios](https://alephone.lhowon.org/scenarios.html) page. After unzipping one of the games, pass the directory as an argument to Aleph One:
-
-    /usr/local/bin/alephone ~/Games/Marathon
+Aleph One and this port are released under the [GNU General Public License v3](https://www.gnu.org/licenses/gpl-3.0.html). The game data is not included and belongs to its respective owners.
