@@ -3641,6 +3641,12 @@ InfoTree graphics_preferences_tree()
 	root.put_attr("software_alpha_blending", graphics_preferences->software_alpha_blending);
 	root.put_attr("software_sdl_driver", graphics_preferences->software_sdl_driver);
 	root.put_attr("fps_target", graphics_preferences->fps_target);
+#ifdef __vita__
+#ifndef VITA_DEFAULTS_VERSION
+#define VITA_DEFAULTS_VERSION 1
+#endif
+	root.put_attr("vita_defaults", (int16)VITA_DEFAULTS_VERSION);
+#endif
 	root.put_attr("anisotropy_level", graphics_preferences->OGL_Configure.AnisotropyLevel);
 	root.put_attr("multisamples", graphics_preferences->OGL_Configure.Multisamples);
 	root.put_attr("wait_for_vsync", graphics_preferences->OGL_Configure.WaitForVSync);
@@ -4142,7 +4148,7 @@ static void default_graphics_preferences(graphics_preferences_data *preferences)
 	preferences->screen_mode.fullscreen = true;
 	preferences->screen_mode.fix_h_not_v = true;
 	preferences->screen_mode.bobbing_type = BobbingType::camera_and_weapon;
-	preferences->screen_mode.bit_depth = 32;
+	preferences->screen_mode.bit_depth = 16;
 	
 	preferences->screen_mode.draw_every_other_line= false;
 
@@ -4152,7 +4158,11 @@ static void default_graphics_preferences(graphics_preferences_data *preferences)
 
 	preferences->software_alpha_blending = _sw_alpha_off;
 	preferences->software_sdl_driver = _sw_driver_default;
+#ifdef __vita__
+	preferences->fps_target = 30;
+#else
 	preferences->fps_target = 0;
+#endif
 
 	preferences->movie_export_video_quality = 50;
 	preferences->movie_export_audio_quality = 50;
@@ -4633,6 +4643,21 @@ void parse_graphics_preferences(InfoTree root, std::string version)
 	root.read_attr("software_alpha_blending", graphics_preferences->software_alpha_blending);
 	root.read_attr("software_sdl_driver", graphics_preferences->software_sdl_driver);
 	root.read_attr("fps_target", graphics_preferences->fps_target);
+#ifdef __vita__
+	{
+		// Bring older preference files up to the current Vita defaults once
+		int16 vita_defaults = 0;
+		root.read_attr("vita_defaults", vita_defaults);
+		if (vita_defaults < 1) {
+			graphics_preferences->screen_mode.bit_depth = 16;
+			graphics_preferences->screen_mode.acceleration = _no_acceleration;
+			graphics_preferences->screen_mode.width = 960;
+			graphics_preferences->screen_mode.height = 544;
+			graphics_preferences->screen_mode.high_resolution = true;
+			graphics_preferences->fps_target = 30;
+		}
+	}
+#endif
 	root.read_attr("anisotropy_level", graphics_preferences->OGL_Configure.AnisotropyLevel);
 	root.read_attr("multisamples", graphics_preferences->OGL_Configure.Multisamples);
 	root.read_attr("wait_for_vsync", graphics_preferences->OGL_Configure.WaitForVSync);

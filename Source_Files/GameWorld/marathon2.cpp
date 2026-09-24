@@ -75,6 +75,9 @@ Feb 8, 2003 (Woody Zenfell):
 */
 
 #include "cseries.h"
+#ifdef __vita__
+#include <psp2/kernel/processmgr.h>
+#endif
 #include "map.h"
 #include "render.h"
 #include "interface.h"
@@ -466,6 +469,9 @@ update_world_elements_one_tick(bool& call_postidle)
 std::pair<bool, int16>
 update_world()
 {
+#ifdef __vita__
+        unsigned int _uw_start = sceKernelGetProcessTimeLow();
+#endif
         short theElapsedTime = 0;
         bool canUpdate = true;
         int theUpdateResult = kUpdateNormalCompletion;
@@ -477,6 +483,9 @@ update_world()
 
 		if (!NetCheckWorldUpdate())
 		{
+#ifdef VITA_PERF_LOG
+			{ static unsigned int _uwt=0,_uwc=0,_uwl=0; _uwt+=sceKernelGetProcessTimeLow()-_uw_start; _uwc++; unsigned int _n=sceKernelGetProcessTimeLow(); if(_n-_uwl>2000000){ FILE*_l=fopen("ux0:/uw.txt","a"); if(_l){fprintf(_l,"update_world: %u us avg over %u calls\n",_uwc?_uwt/_uwc:0,_uwc);fclose(_l);} _uwt=0;_uwc=0;_uwl=_n; } }
+#endif
 			return std::pair<bool, int16_t>(false, 0);
 		}
 	}
@@ -599,6 +608,9 @@ update_world()
 		enter_interpolated_world();
 	}
 	
+#ifdef VITA_PERF_LOG
+	{ static unsigned int _uwt=0,_uwc=0,_uwl=0; _uwt+=sceKernelGetProcessTimeLow()-_uw_start; _uwc++; unsigned int _n=sceKernelGetProcessTimeLow(); if(_n-_uwl>2000000){ FILE*_l=fopen("ux0:/uw.txt","a"); if(_l){fprintf(_l,"update_world: %u us avg over %u calls\n",_uwc?_uwt/_uwc:0,_uwc);fclose(_l);} _uwt=0;_uwc=0;_uwl=_n; } }
+#endif
 	// we return separately 1. "whether to redraw" and 2. "how many game-ticks elapsed"
 	return std::pair<bool, int16>(didPredict || theElapsedTime != 0, theElapsedTime);
 }

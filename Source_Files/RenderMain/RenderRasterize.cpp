@@ -622,10 +622,11 @@ void RenderRasterizerClass::render_node_object(
 	
 	for (window= object->clipping_windows; window; window= window->next_window)
 	{
-		object->rectangle.clip_left= window->x0;
-		object->rectangle.clip_right= window->x1;
-		object->rectangle.clip_top= window->y0;
-		object->rectangle.clip_bottom= window->y1;
+		rectangle_definition _r = object->rectangle;
+		_r.clip_left= window->x0;
+		_r.clip_right= window->x1;
+		_r.clip_top= window->y0;
+		_r.clip_bottom= window->y1;
 		
 		// Models will have their own liquid-surface clipping,
 		// so don't edit their clip rects
@@ -633,23 +634,23 @@ void RenderRasterizerClass::render_node_object(
 		if (view->under_media_boundary ^ other_side_of_media)
 		{
 			// Clipping: below a liquid surface
-			if (object->rectangle.ModelPtr)
-				object->rectangle.BelowLiquid = true;
+			if (_r.ModelPtr)
+				_r.BelowLiquid = true;
 			else
-				object->rectangle.clip_top= MAX(object->rectangle.clip_top, object->ymedia);
+				_r.clip_top= MAX(_r.clip_top, object->ymedia);
 		}
 		else
 		{
 			// Clipping: above a liquid surface
-			if (object->rectangle.ModelPtr)
-				object->rectangle.BelowLiquid = false;
+			if (_r.ModelPtr)
+				_r.BelowLiquid = false;
 			else
-				object->rectangle.clip_bottom= MIN(object->rectangle.clip_bottom, object->ymedia);
+				_r.clip_bottom= MIN(_r.clip_bottom, object->ymedia);
 		}
 		
 		// LP: added OpenGL support
 		// LP: using rasterizer object
-		RasPtr->texture_rectangle(object->rectangle);
+		RasPtr->texture_rectangle(_r);
 	}
 }
 
