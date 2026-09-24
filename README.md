@@ -2,8 +2,6 @@
 
 This is a native port of Aleph One for the PS Vita. Aleph One is the open source engine behind Bungie's *Marathon*, *Marathon 2: Durandal* and *Marathon Infinity*, and it also runs a huge library of fan made scenarios like *Eternal*, *Rubicon X* or *Marathon Phoenix*.
 
-The games run at the Vita's native 960x544 resolution with a stable 30 FPS. Everything is set up for the Vita automatically the first time you start a game, so you can just pick one and play.
-
 ## Installation
 
 You need a PS Vita or PS TV with HENkaku or Enso and [VitaShell](https://github.com/TheOfficialFloW/VitaShell/releases).
