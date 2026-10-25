@@ -1329,6 +1329,9 @@ static bool vita_hud_running = false;
 static bool vita_hud_drawn = false;
 static bool vita_hud_early_clear = false;
 #define VITA_HUD_DRAWN vita_hud_drawn
+// Drawing the Lua HUD on its own core corrupts the heap every few minutes,
+// somewhere in Lua, SDL_ttf or SDL blitting. Keep it on the main core until that is found.
+#define VITA_PARALLEL_HUD 0
 
 static int vita_hud_worker(void *)
 {
@@ -1584,7 +1587,7 @@ void render_screen(short ticks_elapsed)
 			if (_hud.w > 0 && _hud.h > 0) {
 				SDL_FillRect(main_surface, &_hud, 0);
 				vita_hud_dirty = _hud; vita_hud_dirty_valid = true;
-				if (vita_hud_start(ticks_elapsed)) vita_hud_early_clear = true;
+				if (VITA_PARALLEL_HUD && vita_hud_start(ticks_elapsed)) vita_hud_early_clear = true;
 			}
 		}
 	}
