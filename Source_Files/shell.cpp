@@ -775,6 +775,20 @@ void main_event_loop(void)
 			{
 				process_event(event);
 			}
+#ifdef __vita__
+			// The Vita keyboard only sends Enter when its Enter button is used.
+			// Closing it any other way would leave the console waiting forever.
+			if (Console::instance()->input_active() && !SDL_IsScreenKeyboardShown(MainScreenWindow()))
+			{
+				SDL_Event enter;
+				SDL_zero(enter);
+				enter.type = SDL_KEYDOWN;
+				enter.key.state = SDL_PRESSED;
+				enter.key.keysym.scancode = SDL_SCANCODE_RETURN;
+				enter.key.keysym.sym = SDLK_RETURN;
+				process_event(enter);
+			}
+#endif
 
 #ifdef HAVE_STEAM
 			while (auto steam_event = STEAMSHIM_pump()) {
