@@ -1853,6 +1853,9 @@ static key_binding_map default_key_bindings = {
 	} },
 	{ 16, { SDL_SCANCODE_LCTRL,
 		static_cast<SDL_Scancode>(AO_SCANCODE_BASE_JOYSTICK_BUTTON + SDL_CONTROLLER_BUTTON_LEFTSTICK)
+#ifdef __vita__
+		, static_cast<SDL_Scancode>(AO_SCANCODE_BASE_JOYSTICK_BUTTON + SDL_CONTROLLER_BUTTON_B)
+#endif
 	} },
 	{ 17, { SDL_SCANCODE_LGUI
 	} },
@@ -3485,6 +3488,13 @@ void initialize_preferences(
 	}
 }
 
+#ifdef __vita__
+#ifndef VITA_DEFAULTS_VERSION
+#define VITA_DEFAULTS_VERSION 2
+#endif
+static int vita_prefs_loaded_version = VITA_DEFAULTS_VERSION;
+#endif
+
 void read_preferences ()
 {
 	// Set to defaults; will be overridden by reading in the XML stuff
@@ -3494,6 +3504,9 @@ void read_preferences ()
 	default_input_preferences(input_preferences);
 	*sound_preferences = SoundManager::Parameters();
 	default_environment_preferences(environment_preferences);
+#ifdef __vita__
+	vita_prefs_loaded_version = VITA_DEFAULTS_VERSION;
+#endif
 
 	// Slurp in the file and parse it
 
@@ -3592,6 +3605,21 @@ void read_preferences ()
 		alert_user(expand_app_variables("There were preferences-file parsing errors (see $appLogFile$ for details)").c_str(), infoError);
 	}
 
+#ifdef __vita__
+	if (vita_prefs_loaded_version < 2)
+	{
+		// Circle runs, like Shift does on a keyboard
+		const SDL_Scancode circle = static_cast<SDL_Scancode>(AO_SCANCODE_BASE_JOYSTICK_BUTTON + SDL_CONTROLLER_BUTTON_B);
+		bool used = false;
+		for (auto &kb : input_preferences->key_bindings)
+			if (kb.second.count(circle)) used = true;
+		for (auto &kb : input_preferences->shell_key_bindings)
+			if (kb.second.count(circle)) used = true;
+		if (!used)
+			input_preferences->key_bindings[16].insert(circle);
+	}
+#endif
+
 	// Check on the read-in prefs
 	validate_graphics_preferences(graphics_preferences);
 	validate_network_preferences(network_preferences);
@@ -3643,7 +3671,7 @@ InfoTree graphics_preferences_tree()
 	root.put_attr("fps_target", graphics_preferences->fps_target);
 #ifdef __vita__
 #ifndef VITA_DEFAULTS_VERSION
-#define VITA_DEFAULTS_VERSION 1
+#define VITA_DEFAULTS_VERSION 2
 #endif
 	root.put_attr("vita_defaults", (int16)VITA_DEFAULTS_VERSION);
 #endif
@@ -4152,11 +4180,19 @@ static void default_graphics_preferences(graphics_preferences_data *preferences)
 	
 	preferences->screen_mode.draw_every_other_line= false;
 
+#ifdef __vita__
+	preferences->screen_mode.fov = 80;
+#else
 	preferences->screen_mode.fov = 90;
+#endif
 	
 	OGL_SetDefaults(preferences->OGL_Configure);
 
+#ifdef __vita__
+	preferences->software_alpha_blending = _sw_alpha_nice;
+#else
 	preferences->software_alpha_blending = _sw_alpha_off;
+#endif
 	preferences->software_sdl_driver = _sw_driver_default;
 #ifdef __vita__
 	preferences->fps_target = 30;
@@ -4648,6 +4684,7 @@ void parse_graphics_preferences(InfoTree root, std::string version)
 		// Bring older preference files up to the current Vita defaults once
 		int16 vita_defaults = 0;
 		root.read_attr("vita_defaults", vita_defaults);
+		vita_prefs_loaded_version = vita_defaults;
 		if (vita_defaults < 1) {
 			graphics_preferences->screen_mode.bit_depth = 16;
 			graphics_preferences->screen_mode.acceleration = _no_acceleration;
@@ -4655,6 +4692,10 @@ void parse_graphics_preferences(InfoTree root, std::string version)
 			graphics_preferences->screen_mode.height = 544;
 			graphics_preferences->screen_mode.high_resolution = true;
 			graphics_preferences->fps_target = 30;
+		}
+		if (vita_defaults < 2) {
+			graphics_preferences->screen_mode.fov = 80;
+			graphics_preferences->software_alpha_blending = _sw_alpha_nice;
 		}
 	}
 #endif
