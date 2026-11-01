@@ -362,7 +362,11 @@ void initialize_application(void)
 			chooser.add_directory((scenario_dir + "Scenarios").GetPath());
 		}
 		
+#ifdef __vita__
+		if (chooser.num_scenarios() >= 1)
+#else
 		if (chooser.num_scenarios() > 1)
+#endif
 		{
 			std::string chosen_path;
 			std::tie(chosen_path, is_workshop_scenario) = chooser.run();
