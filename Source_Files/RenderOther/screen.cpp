@@ -1326,6 +1326,7 @@ static short vita_hud_ticks = 0;
 static bool vita_hud_running = false;
 static bool vita_hud_drawn = false;
 static bool vita_hud_early_clear = false;
+static bool vita_hud_reuse = false;
 #define VITA_HUD_DRAWN vita_hud_drawn
 #define VITA_PARALLEL_HUD 0
 
@@ -1571,7 +1572,11 @@ void render_screen(short ticks_elapsed)
 #ifdef __vita__
 	vita_hud_drawn = false;
 	vita_hud_early_clear = false;
-	if (screen_mode.acceleration == _no_acceleration && Screen::instance()->hud() && Screen::instance()->lua_hud()
+	vita_hud_reuse = (ticks_elapsed == 0 && vita_top_clean && main_surface
+		&& screen_mode.acceleration == _no_acceleration && Screen::instance()->hud() && Screen::instance()->lua_hud()
+		&& !world_view->overhead_map_active && !world_view->terminal_mode_active);
+	if (vita_hud_reuse) vita_hud_drawn = true;
+	if (!vita_hud_reuse && screen_mode.acceleration == _no_acceleration && Screen::instance()->hud() && Screen::instance()->lua_hud()
 		&& !world_view->overhead_map_active && !world_view->terminal_mode_active && main_surface && vita_top_clean) {
 		SDL_Rect _wr = Screen::instance()->window_rect();
 		SDL_Rect _vr = Screen::instance()->view_rect();
@@ -2013,7 +2018,7 @@ static void update_screen(SDL_Rect &source, SDL_Rect &destination, bool hi_rez, 
 				vita_hud_dirty_valid = false;
 				g_diag_full++;
 			} else if (_hud.w > 0 && _hud.h > 0) {
-				if (!vita_hud_early_clear) SDL_FillRect(main_surface, &_hud, 0);
+				if (!vita_hud_early_clear && !vita_hud_reuse) SDL_FillRect(main_surface, &_hud, 0);
 				vita_hud_dirty = _hud; vita_hud_dirty_valid = true;
 				g_diag_hud++;
 			} else {
@@ -2679,7 +2684,8 @@ void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 			}
 		}
 	}
-	if (_gpu && vita_hud_dirty_valid) {
+	if (_gpu && vita_hud_reuse) {
+	} else if (_gpu && vita_hud_dirty_valid) {
 		Uint8 *_hp = (Uint8*)main_surface->pixels
 			+ vita_hud_dirty.y * main_surface->pitch
 			+ vita_hud_dirty.x * main_surface->format->BytesPerPixel;
@@ -2762,6 +2768,7 @@ void MainScreenUpdateRects(size_t count, const SDL_Rect *rects)
 	}
 #endif
 	vita_finish_world_upload();
+	vita_hud_reuse = false;
 	vita_gpu_upscale_active = false;
 #else
 	SDL_UpdateTexture(main_texture, NULL, main_surface->pixels, main_surface->pitch);
