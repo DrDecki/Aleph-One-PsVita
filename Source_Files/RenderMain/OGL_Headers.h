@@ -29,6 +29,34 @@
 
 #ifdef HAVE_OPENGL
 
+#ifdef __vita__
+#include <vitaGL.h>
+#include <string.h>
+#ifndef VITA_GL_COMPAT
+#define VITA_GL_COMPAT
+static inline void glColor3us(GLushort r, GLushort g, GLushort b) { glColor4f(r / 65535.0f, g / 65535.0f, b / 65535.0f, 1.0f); }
+static inline void glColor4usv(const GLushort *v) { glColor4f(v[0] / 65535.0f, v[1] / 65535.0f, v[2] / 65535.0f, v[3] / 65535.0f); }
+static inline void glColor4us(GLushort r, GLushort g, GLushort b, GLushort a) { glColor4f(r / 65535.0f, g / 65535.0f, b / 65535.0f, a / 65535.0f); }
+static inline void glColor3usv(const GLushort *v) { glColor4f(v[0] / 65535.0f, v[1] / 65535.0f, v[2] / 65535.0f, 1.0f); }
+static inline void glMultMatrixd(const double *m) { GLfloat f[16]; for (int i = 0; i < 16; i++) f[i] = (GLfloat)m[i]; glMultMatrixf(f); }
+static inline GLint gluScaleImage(GLenum format, GLint wi, GLint hi, GLenum ti, const void *in, GLint wo, GLint ho, GLenum to, void *out)
+{
+	if (ti != GL_UNSIGNED_BYTE || to != GL_UNSIGNED_BYTE || wi <= 0 || hi <= 0) return 1;
+	int bpp = (format == GL_RGBA) ? 4 : (format == GL_RGB) ? 3 : (format == GL_LUMINANCE_ALPHA) ? 2 : 1;
+	const unsigned char *src = (const unsigned char *)in;
+	unsigned char *dst = (unsigned char *)out;
+	for (int y = 0; y < ho; y++) {
+		int sy = y * hi / ho;
+		for (int x = 0; x < wo; x++) {
+			int sx = x * wi / wo;
+			memcpy(dst + (y * wo + x) * bpp, src + (sy * wi + sx) * bpp, bpp);
+		}
+	}
+	return 0;
+}
+#endif
+#else
+
 #ifdef __WIN32__
 
 #define GLEW_STATIC 1
@@ -46,6 +74,8 @@
 #include <OpenGL/glu.h>
 #else
 #include <GL/glu.h>
+#endif
+
 #endif
 
 #endif

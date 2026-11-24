@@ -19,6 +19,7 @@
  
  Implements OpenGL vertex/fragment shader class
  */
+#include <ctype.h>
 #include <algorithm>
 #include <iostream>
 
@@ -181,16 +182,103 @@ void parseFile(FileSpecifier& fileSpec, std::string& s) {
 }
 
 
-GLhandleARB parseShader(const GLcharARB* str, GLenum shaderType) {
+#ifdef __vita__
+static void vita_replace(std::string &s, const char *from, const char *to)
+{
+	size_t from_len = strlen(from), to_len = strlen(to);
+	for (size_t p = s.find(from); p != std::string::npos; p = s.find(from, p + to_len))
+		s.replace(p, from_len, to);
+}
+
+static void vita_replace_word(std::string &s, const char *from, const char *to)
+{
+	size_t from_len = strlen(from), to_len = strlen(to);
+	for (size_t p = s.find(from); p != std::string::npos; ) {
+		char c = p ? s[p - 1] : ' ';
+		if (isalnum((unsigned char)c) || c == '_') { p = s.find(from, p + from_len); continue; }
+		s.replace(p, from_len, to);
+		p = s.find(from, p + to_len);
+	}
+}
+
+static std::string vita_rewrite_shader(const char *str, GLenum type)
+{
+	std::string s(str);
+	vita_replace_word(s, "round(", "vgl_round(");
+	vita_replace(s, "sampler2DRect", "sampler2D");
+	vita_replace(s, "texture2DRect(", "vgl_texRect(");
+	vita_replace(s, "gl_ModelViewProjectionMatrix", "vgl_MVP");
+	vita_replace(s, "gl_ModelViewMatrixInverse", "vgl_MVInv");
+	vita_replace(s, "gl_ModelViewMatrix", "vgl_MV");
+	vita_replace(s, "gl_NormalMatrix", "vgl_NormalMat");
+	vita_replace(s, "gl_TextureMatrix[0]", "vgl_TexMat0");
+	vita_replace(s, "gl_MultiTexCoord0", "vgl_MultiTexCoord0");
+	vita_replace(s, "gl_MultiTexCoord1", "vgl_MultiTexCoord1");
+	vita_replace(s, "gl_Vertex", "vgl_Vertex");
+	vita_replace_word(s, "gl_Normal", "vgl_Normal");
+	vita_replace(s, "gl_TexCoord[0]", "vgl_TexCoord0");
+	vita_replace(s, "gl_Fog.color", "vgl_FogColor");
+	vita_replace(s, "gl_Fog.start", "vgl_FogStart");
+	vita_replace(s, "gl_Fog.end", "vgl_FogEnd");
+	vita_replace(s, "gl_Fog.density", "vgl_FogDensity");
+	if (type == GL_VERTEX_SHADER)
+		vita_replace(s, "gl_Color", "vgl_Color");
+
+	struct decl { const char *name; const char *text; bool vertex_only; };
+	static const decl decls[] = {
+		{ "vgl_Vertex", "attribute vec4 vgl_Vertex;\n", true },
+		{ "vgl_MultiTexCoord0", "attribute vec4 vgl_MultiTexCoord0;\n", true },
+		{ "vgl_MultiTexCoord1", "attribute vec4 vgl_MultiTexCoord1;\n", true },
+		{ "vgl_Color", "attribute vec4 vgl_Color;\n", true },
+		{ "vgl_NormalMat", "uniform mat3 vgl_NormalMat;\n", false },
+		{ "vgl_Normal;", "", false },
+		{ "vgl_MVP", "uniform mat4 vgl_MVP;\n", false },
+		{ "vgl_MVInv", "uniform mat4 vgl_MVInv;\n", false },
+		{ "vgl_TexMat0", "uniform mat4 vgl_TexMat0;\n", false },
+		{ "vgl_TexCoord0", "varying vec4 vgl_TexCoord0;\n", false },
+		{ "vgl_FogColor", "uniform vec4 vgl_FogColor;\n", false },
+		{ "vgl_FogStart", "uniform float vgl_FogStart;\n", false },
+		{ "vgl_FogEnd", "uniform float vgl_FogEnd;\n", false },
+		{ "vgl_FogDensity", "uniform float vgl_FogDensity;\n", false },
+		{ "vgl_texRect", "uniform vec2 vgl_RectSize;\nvec4 vgl_texRect(sampler2D t, vec2 c) { return texture2D(t, c / vgl_RectSize); }\n", false },
+	};
+	std::string pre;
+	for (const decl &d : decls) {
+		if (d.vertex_only && type != GL_VERTEX_SHADER) continue;
+		if (s.find(d.name) != std::string::npos) pre += d.text;
+	}
+	{
+		std::string tmp = s;
+		vita_replace(tmp, "vgl_NormalMat", "");
+		if (type == GL_VERTEX_SHADER && tmp.find("vgl_Normal") != std::string::npos)
+			pre += "attribute vec3 vgl_Normal;\n";
+	}
+	{
+		std::string tmp = s;
+		vita_replace(tmp, "vgl_MVP", "");
+		vita_replace(tmp, "vgl_MVInv", "");
+		if (tmp.find("vgl_MV") != std::string::npos)
+			pre += "uniform mat4 vgl_MV;\n";
+	}
+	return pre + s;
+}
+#endif
+
+GLuint parseShader(const GLchar* str, GLenum shaderType) {
 
 	GLint status;
-	GLhandleARB shader = glCreateShaderObjectARB(shaderType);
+	GLuint shader = glCreateShader(shaderType);
 
-	std::vector<const GLcharARB*> source;
+	std::vector<const GLchar*> source;
 
+#ifdef __vita__
+        std::string vita_src = vita_rewrite_shader(str, shaderType);
+        source.push_back("#define DISABLE_CLIP_VERTEX\n");
+#else
         if (DisableClipVertex()) {
             source.push_back("#define DISABLE_CLIP_VERTEX\n");
         }
+#endif
 	if (Wanting_sRGB)
 	{
 		source.push_back("#define GAMMA_CORRECTED_BLENDING\n");
@@ -199,12 +287,30 @@ GLhandleARB parseShader(const GLcharARB* str, GLenum shaderType) {
 	{
 		source.push_back("#define BLOOM_SRGB_FRAMEBUFFER\n");
 	}
+	
+#ifdef __vita__
+	source.push_back(vita_src.c_str());
+#else
 	source.push_back(str);
+#endif
 
-	glShaderSourceARB(shader, source.size(), &source[0], NULL);
 
-	glCompileShaderARB(shader);
-	glGetObjectParameterivARB(shader, GL_OBJECT_COMPILE_STATUS_ARB, &status);
+	glShaderSource(shader, source.size(), &source[0], NULL);
+
+	glCompileShader(shader);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+#ifdef __vita__
+	{
+		GLint _len = 0; glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &_len);
+		FILE *_f = fopen("ux0:/data/AlephOne/shader_log.txt", "a");
+		if (_f) {
+			fprintf(_f, "=== type=0x%x status=%d loglen=%d ===\n", (unsigned)shaderType, (int)status, (int)_len);
+			if (!status) fprintf(_f, "%s\n", str);
+			if (_len > 1) { char *_b = (char*)malloc(_len); glGetShaderInfoLog(shader, _len, NULL, _b); fprintf(_f, "LOG:\n%s\n", _b); free(_b); }
+			fclose(_f);
+		}
+	}
+#endif
 
 	if(status) {
 		return shader;
@@ -220,7 +326,7 @@ GLhandleARB parseShader(const GLcharARB* str, GLenum shaderType) {
             free(infoLog);
         }
         
-		glDeleteObjectARB(shader);
+		glDeleteShader(shader);
 		return 0;
 	}
 }
@@ -277,32 +383,61 @@ void Shader::init() {
 
 	_loaded = true;
 
-	_programObj = glCreateProgramObjectARB();
+	_programObj = glCreateProgram();
 
 	assert(!_vert.empty());
-	GLhandleARB vertexShader = parseShader(_vert.c_str(), GL_VERTEX_SHADER_ARB);
+	GLuint vertexShader = parseShader(_vert.c_str(), GL_VERTEX_SHADER);
     if(!vertexShader) {
         _vert = defaultVertexPrograms["error"];
-        vertexShader = parseShader(_vert.c_str(), GL_VERTEX_SHADER_ARB);
+        vertexShader = parseShader(_vert.c_str(), GL_VERTEX_SHADER);
     }
 	
-	glAttachObjectARB(_programObj, vertexShader);
-	glDeleteObjectARB(vertexShader);
+	glAttachShader(_programObj, vertexShader);
+	glDeleteShader(vertexShader);
 
 	assert(!_frag.empty());
-	GLhandleARB fragmentShader = parseShader(_frag.c_str(), GL_FRAGMENT_SHADER_ARB);
+	GLuint fragmentShader = parseShader(_frag.c_str(), GL_FRAGMENT_SHADER);
 	if(!fragmentShader) {
         _frag = defaultFragmentPrograms["error"];
-        fragmentShader = parseShader(_frag.c_str(), GL_FRAGMENT_SHADER_ARB);
+        fragmentShader = parseShader(_frag.c_str(), GL_FRAGMENT_SHADER);
     }
     
-	glAttachObjectARB(_programObj, fragmentShader);
-	glDeleteObjectARB(fragmentShader);
+	glAttachShader(_programObj, fragmentShader);
+	glDeleteShader(fragmentShader);
 	
-	glLinkProgramARB(_programObj);
+	
+#ifdef __vita__
+	{
+		static int vita_link_count = 0;
+		FILE *_f = fopen("ux0:/data/AlephOne/shader_log.txt", "a");
+		if (_f) {
+			fprintf(_f, "### LINKING program %d\n--- vertex ---\n%s\n--- fragment ---\n%s\n### END\n", vita_link_count++, vita_rewrite_shader(_vert.c_str(), GL_VERTEX_SHADER).c_str(), vita_rewrite_shader(_frag.c_str(), GL_FRAGMENT_SHADER).c_str());
+			fclose(_f);
+		}
+	}
+	glBindAttribLocation(_programObj, 0, "vgl_Vertex");
+	glBindAttribLocation(_programObj, 1, "vgl_MultiTexCoord0");
+	glBindAttribLocation(_programObj, 2, "vgl_MultiTexCoord1");
+	glBindAttribLocation(_programObj, 3, "vgl_Color");
+	glBindAttribLocation(_programObj, 4, "vgl_Normal");
+#endif
+	glLinkProgram(_programObj);
     
     GLint linked;
     glGetProgramiv((GLuint)(size_t)_programObj, GL_LINK_STATUS, &linked);
+#ifdef __vita__
+    {
+        static int vita_prog_count = 0;
+        GLint _len = 0; glGetProgramiv(_programObj, GL_INFO_LOG_LENGTH, &_len);
+        FILE *_f = fopen("ux0:/data/AlephOne/shader_log.txt", "a");
+        if (_f) {
+            fprintf(_f, "=== program %d linked=%d loglen=%d ===\n", vita_prog_count++, (int)linked, (int)_len);
+            if (_len > 1) { char *_b = (char*)malloc(_len); glGetProgramInfoLog(_programObj, _len, NULL, _b); fprintf(_f, "LINK LOG:\n%s\n", _b); free(_b); }
+            if (!linked) fprintf(_f, "--- vertex ---\n%s\n--- fragment ---\n%s\n", vita_rewrite_shader(_vert.c_str(), GL_VERTEX_SHADER).c_str(), vita_rewrite_shader(_frag.c_str(), GL_FRAGMENT_SHADER).c_str());
+            fclose(_f);
+        }
+    }
+#endif
     if(!linked)
     {
       GLint infoLen = 0;
@@ -319,14 +454,14 @@ void Shader::init() {
 
 	assert(_programObj);
 
-	glUseProgramObjectARB(_programObj);
+	glUseProgram(_programObj);
 
-	glUniform1iARB(getUniformLocation(U_Texture0), 0);
-	glUniform1iARB(getUniformLocation(U_Texture1), 1);
-	glUniform1iARB(getUniformLocation(U_Texture2), 2);
-	glUniform1iARB(getUniformLocation(U_Texture3), 3);	
+	glUniform1i(getUniformLocation(U_Texture0), 0);
+	glUniform1i(getUniformLocation(U_Texture1), 1);
+	glUniform1i(getUniformLocation(U_Texture2), 2);
+	glUniform1i(getUniformLocation(U_Texture3), 3);	
 
-	glUseProgramObjectARB(0);
+	glUseProgram(0);
 
 //	assert(glGetError() == GL_NO_ERROR);
 }
@@ -335,13 +470,13 @@ void Shader::setFloat(UniformName name, float f) {
 
 	if (_cached_floats[name] != f) {
 		_cached_floats[name] = f;
-		glUniform1fARB(getUniformLocation(name), f);
+		glUniform1f(getUniformLocation(name), f);
 	}
 }
 
 void Shader::setMatrix4(UniformName name, float *f) {
 
-	glUniformMatrix4fvARB(getUniformLocation(name), 1, false, f);
+	glUniformMatrix4fv(getUniformLocation(name), 1, false, f);
 }
 
 Shader::~Shader() {
@@ -350,16 +485,16 @@ Shader::~Shader() {
 
 void Shader::enable() {
 	if(!_loaded) { init(); }
-	glUseProgramObjectARB(_programObj);
+	glUseProgram(_programObj);
 }
 
 void Shader::disable() {
-	glUseProgramObjectARB(0);
+	glUseProgram(0);
 }
 
 void Shader::unload() {
 	if(_programObj) {
-		glDeleteObjectARB(_programObj);
+		glDeleteProgram(_programObj);
 		_programObj = 0;
 		_loaded = false;
 	}

@@ -32,35 +32,35 @@
 std::vector<FBO *> FBO::active_chain;
 
 FBO::FBO(GLuint w, GLuint h, bool srgb) : _h(h), _w(w), _srgb(srgb) {
-	glGenFramebuffersEXT(1, &_fbo);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _fbo);
+	glGenFramebuffers(1, &_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
 	
-	glGenRenderbuffersEXT(1, &_depthBuffer);
-	glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, _depthBuffer);
-	glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT, _w, _h);
-	glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, _depthBuffer);
+	glGenRenderbuffers(1, &_depthBuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, _depthBuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, _w, _h);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthBuffer);
 	
 	glGenTextures(1, &texID);
-	glBindTexture(GL_TEXTURE_RECTANGLE_ARB, texID);
-	glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, srgb ? GL_SRGB : GL_RGB8, _w, _h, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, TxtrTypeInfoList[OGL_Txtr_HUD].NearFilter);
-	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, TxtrTypeInfoList[OGL_Txtr_HUD].FarFilter);
-	glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, texID, 0);
-	assert(glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) == GL_FRAMEBUFFER_COMPLETE_EXT);
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	glBindTexture(GL_TEXTURE_2D, texID);
+	glTexImage2D(GL_TEXTURE_2D, 0, srgb ? GL_SRGB : GL_RGB8, _w, _h, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, TxtrTypeInfoList[OGL_Txtr_HUD].NearFilter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, TxtrTypeInfoList[OGL_Txtr_HUD].FarFilter);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texID, 0);
+	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void FBO::activate(bool clear, GLuint fboTarget) {
 	if (!active_chain.size() || active_chain.back() != this) {
 		active_chain.push_back(this);
 		_fboTarget = fboTarget;
-		glBindFramebufferEXT(fboTarget, _fbo);
+		glBindFramebuffer(fboTarget, _fbo);
 		glPushAttrib(GL_VIEWPORT_BIT);
 		glViewport(0, 0, _w, _h);
 		if (_srgb)
-			glEnable(GL_FRAMEBUFFER_SRGB_EXT);
+			glEnable(GL_FRAMEBUFFER_SRGB);
 		else
-			glDisable(GL_FRAMEBUFFER_SRGB_EXT);
+			glDisable(GL_FRAMEBUFFER_SRGB);
 		if (clear)
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
@@ -77,19 +77,19 @@ void FBO::deactivate() {
 			prev_fbo = active_chain.back()->_fbo;
 			prev_srgb = active_chain.back()->_srgb;
 		}
-		glBindFramebufferEXT(_fboTarget, prev_fbo);
+		glBindFramebuffer(_fboTarget, prev_fbo);
 		if (prev_srgb)
-			glEnable(GL_FRAMEBUFFER_SRGB_EXT);
+			glEnable(GL_FRAMEBUFFER_SRGB);
 		else
-			glDisable(GL_FRAMEBUFFER_SRGB_EXT);
+			glDisable(GL_FRAMEBUFFER_SRGB);
 	}
 }
 
 void FBO::draw() {
-	glBindTexture(GL_TEXTURE_RECTANGLE_ARB, texID);
-	glEnable(GL_TEXTURE_RECTANGLE_ARB);
-	OGL_RenderTexturedRect(0, 0, _w, _h, 0, _h, _w, 0);
-	glDisable(GL_TEXTURE_RECTANGLE_ARB);
+	glBindTexture(GL_TEXTURE_2D, texID);
+	glEnable(GL_TEXTURE_2D);
+	OGL_RenderTexturedRect(0, 0, _w, _h, 0, 1, 1, 0);
+	glDisable(GL_TEXTURE_2D);
 }
 
 void FBO::prepare_drawing_mode(bool blend) {
@@ -124,8 +124,8 @@ void FBO::draw_full(bool blend) {
 }
 
 FBO::~FBO() {
-	glDeleteFramebuffersEXT(1, &_fbo);
-	glDeleteRenderbuffersEXT(1, &_depthBuffer);
+	glDeleteFramebuffers(1, &_fbo);
+	glDeleteRenderbuffers(1, &_depthBuffer);
 }
 
 
@@ -176,9 +176,9 @@ void FBOSwapper::copy(FBO& other, bool srgb) {
 void FBOSwapper::blend(FBO& other, bool srgb) {
 	activate();
 	if (!srgb)
-		glDisable(GL_FRAMEBUFFER_SRGB_EXT);
+		glDisable(GL_FRAMEBUFFER_SRGB);
 	else
-		glEnable(GL_FRAMEBUFFER_SRGB_EXT);
+		glEnable(GL_FRAMEBUFFER_SRGB);
 	other.draw_full(true);
 	deactivate();
 }
@@ -188,27 +188,27 @@ void FBOSwapper::blend_multisample(FBO& other) {
 	activate();
 	
 	// set up FBO passed in as texture #1
-	glActiveTextureARB(GL_TEXTURE1_ARB);
-	glBindTexture(GL_TEXTURE_RECTANGLE_ARB, other.texID);
-	glEnable(GL_TEXTURE_RECTANGLE_ARB);
-	glActiveTextureARB(GL_TEXTURE0_ARB);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, other.texID);
+	glEnable(GL_TEXTURE_2D);
+	glActiveTexture(GL_TEXTURE0);
 	
-	glClientActiveTextureARB(GL_TEXTURE1_ARB);
+	glClientActiveTexture(GL_TEXTURE1);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-	GLint multi_coordinates[8] = { 0, GLint(other._h), GLint(other._w), GLint(other._h), GLint(other._w), 0, 0, 0 };
-	glTexCoordPointer(2, GL_INT, 0, multi_coordinates);
-	glClientActiveTextureARB(GL_TEXTURE0_ARB);
+	GLfloat multi_coordinates[8] = { 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f };
+	glTexCoordPointer(2, GL_FLOAT, 0, multi_coordinates);
+	glClientActiveTexture(GL_TEXTURE0);
 	
 	draw(true);
 	
 	// tear down multitexture stuff
-	glActiveTextureARB(GL_TEXTURE1_ARB);
-	glDisable(GL_TEXTURE_RECTANGLE_ARB);
-	glActiveTextureARB(GL_TEXTURE0_ARB);
+	glActiveTexture(GL_TEXTURE1);
+	glDisable(GL_TEXTURE_2D);
+	glActiveTexture(GL_TEXTURE0);
 	
-	glClientActiveTextureARB(GL_TEXTURE1_ARB);
+	glClientActiveTexture(GL_TEXTURE1);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-	glClientActiveTextureARB(GL_TEXTURE0_ARB);
+	glClientActiveTexture(GL_TEXTURE0);
 	
 	deactivate();
 }

@@ -46,7 +46,7 @@ public:
 	FBO(GLuint w, GLuint h, bool srgb = false);
 	~FBO();
 	
-	void activate(bool clear = false, GLuint fboTarget = GL_FRAMEBUFFER_EXT);
+	void activate(bool clear = false, GLuint fboTarget = GL_FRAMEBUFFER);
 	void deactivate();
 	
 	void draw();
