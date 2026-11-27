@@ -641,12 +641,33 @@ static void DisplayInputLine(SDL_Surface *s)
   auto text_margins = alephone::Screen::instance()->lua_text_margins;
   short X0 = text_margins.left;
   short Y0 = s->h - text_margins.bottom;
+#ifdef __vita__
+  if (SDL_IsScreenKeyboardShown(main_screen)) Y0 = s->h * 2 / 5;
+#endif
 
   short Offset = Font.LineSpacing / 3;
   short X = X0 + Offset;
   short Y = Y0 - Offset;
   const char *buf = Console::instance()->displayBuffer().c_str();
   DisplayText(X, Y, buf);
+#ifdef __vita__
+  {
+    static Uint32 last = 0;
+    Uint32 now = SDL_GetTicks();
+    if (now - last > 1000) {
+      last = now;
+      FILE *f = fopen("ux0:/data/AlephOne/console_log.txt", "a");
+      if (f) {
+        GLint vp[4] = { 0, 0, 0, 0 };
+        if (OGL_IsActive()) glGetIntegerv(GL_VIEWPORT, vp);
+        fprintf(f, "text=\"%s\" x=%d y=%d surface=%dx%d margins l=%d b=%d ogl=%d map=%d term=%d viewport=%d,%d %dx%d\n",
+          buf, X, Y, s->w, s->h, (int)text_margins.left, (int)text_margins.bottom, (int)OGL_IsActive(),
+          (int)world_view->overhead_map_active, (int)world_view->terminal_mode_active, vp[0], vp[1], vp[2], vp[3]);
+        fclose(f);
+      }
+    }
+  }
+#endif
   DisplayTextCursor(s, X, Y, buf, Console::instance()->cursor_position());
   }
 }
