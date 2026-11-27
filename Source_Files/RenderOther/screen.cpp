@@ -19,6 +19,42 @@
 
 */
 
+#ifdef __vita__
+#include <stdio.h>
+#include <psp2/kernel/processmgr.h>
+enum { VPROF_WORLD, VPROF_3D, VPROF_HUD, VPROF_SWAP, VPROF_VIS, VPROF_SORT, VPROF_PLACE, VPROF_BEGIN, VPROF_TREE, VPROF_WEAPON, VPROF_END, VPROF_COUNT };
+static SceUInt64 vprof_acc[VPROF_COUNT];
+extern "C" void hg_stats(unsigned *in_use_kb, unsigned *peak_kb);
+void vita_prof_add(int slot, unsigned long long us) { if (slot >= 0 && slot < VPROF_COUNT) vprof_acc[slot] += us; }
+static void vita_prof_frame()
+{
+	static SceUInt64 last = 0, frames = 0, total = 0;
+	SceUInt64 now = sceKernelGetProcessTimeWide();
+	if (last) total += now - last;
+	last = now;
+	if (++frames >= 60 || total >= 1000000) {
+		FILE *f = fopen("ux0:/data/AlephOne/frame_log.txt", "a");
+		if (f && frames) {
+			double fr = (double)frames;
+			double t = total / fr / 1000.0;
+			double w = vprof_acc[VPROF_WORLD] / fr / 1000.0, r = vprof_acc[VPROF_3D] / fr / 1000.0;
+			double h = vprof_acc[VPROF_HUD] / fr / 1000.0, s = vprof_acc[VPROF_SWAP] / fr / 1000.0;
+			fprintf(f, "%5.1f FPS  frame %5.1f ms  world %4.1f  3d %4.1f  hud %4.1f  swap %4.1f  rest %4.1f\n",
+				t > 0 ? 1000.0 / t : 0.0, t, w, r, h, s, t - w - r - h - s);
+			{ unsigned u, p; hg_stats(&u, &p); fprintf(f, "      heap: %u KB in use, peak %u KB\n", u, p); }
+			fprintf(f, "      3d:  vis %4.1f  sort %4.1f  place %4.1f  begin %4.1f  tree %4.1f  weapon %4.1f  end %4.1f\n",
+				vprof_acc[VPROF_VIS] / fr / 1000.0, vprof_acc[VPROF_SORT] / fr / 1000.0, vprof_acc[VPROF_PLACE] / fr / 1000.0,
+				vprof_acc[VPROF_BEGIN] / fr / 1000.0, vprof_acc[VPROF_TREE] / fr / 1000.0, vprof_acc[VPROF_WEAPON] / fr / 1000.0,
+				vprof_acc[VPROF_END] / fr / 1000.0);
+		}
+		if (f) fclose(f);
+		for (int i = 0; i < VPROF_COUNT; i++) vprof_acc[i] = 0;
+		frames = 0; total = 0;
+	}
+}
+#define VPROF_NOW() sceKernelGetProcessTimeWide()
+#endif
+
 
 /*
  *  screen_sdl.cpp - Screen management, SDL implementation
@@ -1613,6 +1649,7 @@ void render_screen(short ticks_elapsed)
 	Uint64 _pf3a = SDL_GetPerformanceCounter();
 	render_view(world_view, software_render_dest.get());
 	g_pf_3d += (double)(SDL_GetPerformanceCounter()-_pf3a)/SDL_GetPerformanceFrequency()*1000.0;
+	vita_prof_add(VPROF_3D, (SDL_GetPerformanceCounter()-_pf3a) * 1000000ULL / SDL_GetPerformanceFrequency());
 	vita_hud_join();
 #else
 	render_view(world_view, software_render_dest.get());
@@ -1683,8 +1720,13 @@ void render_screen(short ticks_elapsed)
 	if (screen_mode.acceleration != _no_acceleration) {
 #ifdef HAVE_OPENGL
 		if (Screen::instance()->hud()) {
-			if (Screen::instance()->lua_hud())
-				Lua_DrawHUD(ticks_elapsed);
+			if (Screen::instance()->lua_hud()) {
+				SceUInt64 _h0 = VPROF_NOW();
+				extern int vita_gl_cfg(const char *key, int def);
+				static int _nohud = vita_gl_cfg("nohud", 0);
+				if (!_nohud) Lua_DrawHUD(ticks_elapsed);
+				vita_prof_add(VPROF_HUD, VPROF_NOW() - _h0);
+			}
 			else {
 				Rect dr = MakeRect(HUD_DestRect);
 				OGL_DrawHUD(dr, ticks_elapsed);
@@ -1790,7 +1832,10 @@ void render_screen(short ticks_elapsed)
 			darken_world_window();
 		}
 
+		SceUInt64 _s0 = VPROF_NOW();
 		OGL_SwapBuffers();
+		vita_prof_add(VPROF_SWAP, VPROF_NOW() - _s0);
+		vita_prof_frame();
 	}
 #endif
 	

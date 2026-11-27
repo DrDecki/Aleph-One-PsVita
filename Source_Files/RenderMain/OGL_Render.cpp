@@ -516,8 +516,24 @@ bool OGL_ClearScreen()
 void OGL_Rasterizer_Init();
 
 // Start an OpenGL run (creates a rendering context)
+#ifdef __vita__
+#include <psp2/kernel/processmgr.h>
+static void vita_mark(const char *what)
+{
+	static SceUInt64 last = 0;
+	SceUInt64 now = sceKernelGetProcessTimeWide();
+	FILE *f = fopen("ux0:/data/AlephOne/startrun_log.txt", "a");
+	if (f) { fprintf(f, "%-28s %6u ms\n", what, last ? (unsigned)((now - last) / 1000) : 0u); fclose(f); }
+	last = now;
+}
+#define VITA_MARK(x) vita_mark(x)
+#else
+#define VITA_MARK(x)
+#endif
+
 bool OGL_StartRun()
 {
+	VITA_MARK("start");
 	logContext("starting up OpenGL rendering");
 
 	if (!OGL_IsPresent()) return false;
@@ -615,13 +631,16 @@ bool OGL_StartRun()
 	OGL_Rasterizer_Init();
 	
 	OGL_ResetForceSpriteDepth();
+	VITA_MARK("before replacements");
 	load_replacement_collections();	
+	VITA_MARK("replacement collections");
 
 	// Initialize the texture accounting
 	OGL_StartTextures();
 
 	// Reset the font info for OpenGL rendering
 	FontSpecifier::OGL_ResetFonts(true);
+	VITA_MARK("textures and fonts");
 	
 	// Since an OpenGL context has just been created, don't try to clear any OpenGL textures
 	OGL_ResetModelSkins(false);
@@ -629,10 +648,36 @@ bool OGL_StartRun()
 	// Setup for 3D-model rendering
 	ModelRenderObject.Clear();
 	SetupShaders();
+	VITA_MARK("shaders");
 	OGL_ProgressCallback(1);
 
 	// Avoid lazy initial texture loading
 	PreloadTextures();
+	VITA_MARK("preload textures");
+#ifdef __vita__
+	{
+		Shader::loadAll();
+		OGL_ConfigureData& cfg = Get_OGL_ConfigureData();
+		bool bloom = TEST_FLAG(cfg.Flags, OGL_Flag_Blur);
+		bool bump = TEST_FLAG(cfg.Flags, OGL_Flag_BumpMap);
+		const Shader::ShaderType always[] = {
+			Shader::S_Wall, Shader::S_Sprite, Shader::S_Landscape, Shader::S_LandscapeSphere,
+			Shader::S_Invincible, Shader::S_Invisible
+		};
+		const Shader::ShaderType with_bloom[] = {
+			Shader::S_Blur, Shader::S_Bloom, Shader::S_Gamma, Shader::S_WallBloom, Shader::S_SpriteBloom,
+			Shader::S_LandscapeBloom, Shader::S_LandscapeSphereBloom, Shader::S_InvincibleBloom, Shader::S_InvisibleBloom
+		};
+		for (Shader::ShaderType t : always) Shader::get(t)->enable();
+		if (bloom) for (Shader::ShaderType t : with_bloom) Shader::get(t)->enable();
+		if (bump) {
+			Shader::get(Shader::S_Bump)->enable();
+			if (bloom) Shader::get(Shader::S_BumpBloom)->enable();
+		}
+		Shader::disable();
+	}
+	VITA_MARK("precompile shaders");
+#endif
 	OGL_ProgressCallback(1);
 	OGL_StopProgress();
 
@@ -3033,11 +3078,16 @@ bool OGL_RenderText(short BaseX, short BaseY, const char *Text, unsigned char r,
 	
 	// Create display list for the current text string;
 	// use the "standard" text-font display list (display lists can be nested)
+#ifdef __vita__
+	auto CallText = [&]() { GetOnScreenFont().OGL_Render(Text); };
+#else
 	GLuint TextDisplayList;
 	TextDisplayList = glGenLists(1);
 	glNewList(TextDisplayList,GL_COMPILE);
 	GetOnScreenFont().OGL_Render(Text);
 	glEndList();
+	auto CallText = [&]() { glCallList(TextDisplayList); };
+#endif
 	
 	// Place the text in the foreground of the display
 	SetProjectionType(Projection_Screen);
@@ -3054,46 +3104,48 @@ bool OGL_RenderText(short BaseX, short BaseY, const char *Text, unsigned char r,
 	/*
 	glLoadIdentity();
 	glTranslatef(BaseX-1,BaseY-1,Depth);
-	glCallList(TextDisplayList);
+	CallText();
 	
 	glLoadIdentity();
 	glTranslatef(BaseX,BaseY-1,Depth);
-	glCallList(TextDisplayList);
+	CallText();
 	
 	glLoadIdentity();
 	glTranslatef(BaseX+1,BaseY-1,Depth);
-	glCallList(TextDisplayList);
+	CallText();
 	
 	glLoadIdentity();
 	glTranslatef(BaseX-1,BaseY,Depth);
-	glCallList(TextDisplayList);
+	CallText();
 	
 	glLoadIdentity();
 	glTranslatef(BaseX+1,BaseY,Depth);
-	glCallList(TextDisplayList);
+	CallText();
 	
 	glLoadIdentity();
 	glTranslatef(BaseX-1,BaseY+1,Depth);
-	glCallList(TextDisplayList);
+	CallText();
 	
 	glLoadIdentity();
 	glTranslatef(BaseX,BaseY+1,Depth);
-	glCallList(TextDisplayList);
+	CallText();
 	*/
 	
 	glLoadIdentity();
 	glTranslatef(BaseX+1.0F,BaseY+1.0F,Depth);
-	glCallList(TextDisplayList);
+	CallText();
 	
 	// Foreground
 	SglColor3f(r/255.0f,g/255.0f,b/255.0f);
 
 	glLoadIdentity();
 	glTranslatef(BaseX,BaseY,Depth);
-	glCallList(TextDisplayList);
+	CallText();
 		
 	// Clean up
+#ifndef __vita__
 	glDeleteLists(TextDisplayList,1);
+#endif
 	glPopMatrix();
 	
 	return true;

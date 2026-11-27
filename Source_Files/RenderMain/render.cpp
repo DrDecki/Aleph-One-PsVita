@@ -479,6 +479,10 @@ void initialize_view_data(
 }
 
 /* origin,origin_polygon_index,yaw,pitch,roll,etc. have probably changed since last call */
+#ifdef __vita__
+#include <psp2/kernel/processmgr.h>
+void vita_prof_add(int slot, unsigned long long us);
+#endif
 void render_view(
 	struct view_data *view,
 	struct bitmap_definition *software_render_dest)
@@ -508,8 +512,15 @@ void render_view(
 		
 		// LP: now from the visibility-tree class
 		/* build the render tree, regardless of map mode, so the automap updates while active */
+#ifdef __vita__
+		unsigned long long _p0 = sceKernelGetProcessTimeWide(), _p1;
+#define VPROF_STEP(slot) do { _p1 = sceKernelGetProcessTimeWide(); vita_prof_add(slot, _p1 - _p0); _p0 = _p1; } while (0)
+#else
+#define VPROF_STEP(slot)
+#endif
 		RenderVisTree.view = view;
 		RenderVisTree.build_render_tree();
+		VPROF_STEP(4);
 		
 		/* do something complicated and difficult to explain */
 		if (!view->overhead_map_active || map_is_translucent())
@@ -518,12 +529,15 @@ void render_view(
 			/* sort the render tree (so we have a depth-ordering of polygons) and accumulate
 				clipping information for each polygon */
 			RenderSortPoly.view = view;
+			VPROF_STEP(4);
 			RenderSortPoly.sort_render_tree();
+			VPROF_STEP(5);
 			
 			// LP: now from the object-placement class
 			/* build the render object list by looking at the sorted render tree */
 			RenderPlaceObjs.view = view;
 			RenderPlaceObjs.build_render_object_list();
+			VPROF_STEP(6);
 			
 			// LP addition: set the current rasterizer to whichever is appropriate here
 			RasterizerClass *RasPtr;
@@ -545,6 +559,7 @@ void render_view(
 			
 			// Start rendering main view
 			RasPtr->Begin();
+			VPROF_STEP(7);
 			
 			// LP: now from the clipping/rasterizer class
 #ifdef HAVE_OPENGL			
@@ -562,6 +577,7 @@ void render_view(
 			else
 #endif
 			RenPtr->render_tree();
+			VPROF_STEP(8);
 			
 			// LP: won't put this into a separate class
 			/* render the player’s weapons, etc. */
@@ -570,7 +586,9 @@ void render_view(
                         }
 			
 			// Finish rendering main view
+			VPROF_STEP(9);
 			RasPtr->End();
+			VPROF_STEP(10);
 		}
 
 		if (view->overhead_map_active)

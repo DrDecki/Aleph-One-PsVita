@@ -139,9 +139,24 @@ void Rasterizer_Shader_Class::setupGL()
 		smear_the_void = true;
 }
 
+#ifdef __vita__
+static bool vita_direct_render()
+{
+	return !TEST_FLAG(Get_OGL_ConfigureData().Flags, OGL_Flag_Blur);
+}
+#endif
+
 void Rasterizer_Shader_Class::Begin()
 {
 	Rasterizer_OGL_Class::Begin();
+#ifdef __vita__
+	if (vita_direct_render()) {
+		glClearColor(0, 0, 0, 1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		vgl_shim_state.gamma = get_actual_gamma_adjust(graphics_preferences->screen_mode.gamma_level);
+		return;
+	}
+#endif
 	swapper->activate();
 	if (smear_the_void)
 		swapper->current_contents().draw_full();
@@ -149,6 +164,16 @@ void Rasterizer_Shader_Class::Begin()
 
 void Rasterizer_Shader_Class::End()
 {
+#ifdef __vita__
+	if (vita_direct_render()) {
+		vgl_shim_state.gamma = 1.0f;
+		SetForeground();
+		glColor3f(0, 0, 0);
+		OGL_RenderFrame(0, 0, view_width, view_height, 1);
+		Rasterizer_OGL_Class::End();
+		return;
+	}
+#endif
 	swapper->deactivate();
 	swapper->swap();
 	

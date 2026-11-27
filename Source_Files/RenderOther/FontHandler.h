@@ -132,6 +132,12 @@ public:
 	GLuint TxtrID;
 	GLuint NearFilter = GL_LINEAR;
 	uint32 DispList;
+#ifdef __vita__
+	GLfloat VitaGlyph[256][4];
+	short VitaWidth[256];
+	bool VitaHas[256];
+	short VitaAscent, VitaHeight;
+#endif
 	static std::set<FontSpecifier*> *m_font_registry;
 #endif
 };

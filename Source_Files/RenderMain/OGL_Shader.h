@@ -102,6 +102,10 @@ private:
 	std::string _frag;
 	int16 _passes;
 	bool _loaded;
+#ifdef __vita__
+	GLuint _programObjAlpha = 0;
+	GLint _uniform_locations_alpha[NUMBER_OF_UNIFORM_LOCATIONS];
+#endif
 
 	static const char* _shader_names[NUMBER_OF_SHADER_TYPES];
 	static std::vector<Shader> _shaders;
@@ -116,6 +120,13 @@ private:
 		}
 		return _uniform_locations[name];
 	}
+#ifdef __vita__
+	GLint getUniformLocationAlpha(UniformName name) {
+		if (_uniform_locations_alpha[name] == -1)
+			_uniform_locations_alpha[name] = glGetUniformLocation(_programObjAlpha, _uniform_names[name]);
+		return _uniform_locations_alpha[name];
+	}
+#endif
 	
 public:
 

@@ -48,6 +48,32 @@ static void hg_ctor(void)
     hg_setup();
 }
 
+#include <stdio.h>
+#include <psp2/io/fcntl.h>
+
+static void hg_oom(const char *what, size_t size, void *caller)
+{
+    char b[128];
+    SceUID fd;
+    snprintf(b, sizeof b, "%s failed: %u bytes caller=%p\n", what, (unsigned)size, caller);
+    fd = sceIoOpen("ux0:/data/AlephOne/heap_log.txt", SCE_O_WRONLY | SCE_O_CREAT | SCE_O_APPEND, 0777);
+    if (fd < 0) return;
+    sceIoWrite(fd, b, strlen(b));
+    sceIoClose(fd);
+}
+
+void hg_stats(unsigned *in_use_kb, unsigned *peak_kb)
+{
+    SceClibMspaceStats st;
+    *in_use_kb = *peak_kb = 0;
+    if (!hg_mspace) return;
+    HG_LOCK();
+    sceClibMspaceMallocStatsFast(hg_mspace, &st);
+    HG_UNLOCK();
+    *in_use_kb = (unsigned)(st.current_in_use / 1024);
+    *peak_kb = (unsigned)(st.peak_in_use / 1024);
+}
+
 static int hg_owns(const void *p)
 {
     unsigned int a = (unsigned int)p;
@@ -62,6 +88,7 @@ void *__wrap_malloc(size_t size)
     HG_LOCK();
     p = sceClibMspaceMalloc(hg_mspace, size);
     HG_UNLOCK();
+    if (!p && size) hg_oom("malloc", size, __builtin_return_address(0));
     return p;
 }
 
@@ -77,6 +104,7 @@ void *__wrap_calloc(size_t n, size_t size)
     HG_LOCK();
     p = sceClibMspaceCalloc(hg_mspace, n, size);
     HG_UNLOCK();
+    if (!p && n * size) hg_oom("calloc", n * size, __builtin_return_address(0));
     return p;
 }
 
@@ -88,6 +116,7 @@ void *__wrap_memalign(size_t align, size_t size)
     HG_LOCK();
     p = sceClibMspaceMemalign(hg_mspace, align, size);
     HG_UNLOCK();
+    if (!p && size) hg_oom("memalign", size, __builtin_return_address(0));
     return p;
 }
 
@@ -111,6 +140,7 @@ void *__wrap_realloc(void *ptr, size_t size)
         HG_LOCK();
         p = sceClibMspaceRealloc(hg_mspace, ptr, size);
         HG_UNLOCK();
+        if (!p && size) hg_oom("realloc", size, __builtin_return_address(0));
         return p;
     }
     return __real_realloc(ptr, size);

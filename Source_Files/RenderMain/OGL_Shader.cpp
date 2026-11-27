@@ -183,6 +183,10 @@ void parseFile(FileSpecifier& fileSpec, std::string& s) {
 
 
 #ifdef __vita__
+vgl_shim_state_t vgl_shim_state = VGL_SHIM_STATE_INIT;
+#endif
+
+#ifdef __vita__
 static void vita_replace(std::string &s, const char *from, const char *to)
 {
 	size_t from_len = strlen(from), to_len = strlen(to);
@@ -201,12 +205,45 @@ static void vita_replace_word(std::string &s, const char *from, const char *to)
 	}
 }
 
+static bool vita_alpha_variant = false;
+static bool vita_clip_ok = false;
+
+static int vita_cfg(const char *key, int def)
+{
+	static char buf[512];
+	static bool loaded = false;
+	if (!loaded) {
+		loaded = true;
+		buf[0] = 0;
+		FILE *f = fopen("ux0:/data/AlephOne/vita_gl.txt", "r");
+		if (f) { size_t n = fread(buf, 1, sizeof(buf) - 1, f); buf[n] = 0; fclose(f); }
+	}
+	const char *p = strstr(buf, key);
+	if (!p || p[strlen(key)] != '=') return def;
+	return atoi(p + strlen(key) + 1);
+}
+
+int vita_gl_cfg(const char *key, int def) { return vita_cfg(key, def); }
+
 static std::string vita_rewrite_shader(const char *str, GLenum type)
 {
 	std::string s(str);
+	static bool vita_compiler_set = false;
+	if (!vita_compiler_set) {
+		vita_compiler_set = true;
+		if (vita_cfg("fastprecision", 0))
+			vglSetupRuntimeShaderCompiler(SHARK_OPT_UNSAFE, GL_TRUE, GL_TRUE, GL_TRUE);
+		FILE *f = fopen("ux0:/data/AlephOne/shader_log.txt", "a");
+		if (f) { fprintf(f, "### settings: fastprecision=%d nowobble=%d simplewall=%d nosky=%d nohud=%d\n", vita_cfg("fastprecision", 0), vita_cfg("nowobble", 0), vita_cfg("simplewall", 0), vita_cfg("nosky", 0), vita_cfg("nohud", 0)); fclose(f); }
+	}
+	if (type == GL_FRAGMENT_SHADER && vita_cfg("nowobble", 0)) {
+		vita_replace(s, "texCoords += vec3(normXY.y * -pulsate, normXY.x * pulsate, 0.0);", "");
+		vita_replace(s, "texCoords += vec3(normXY.y * -wobble * texCoords.y, wobble * texCoords.y, 0.0);", "");
+	}
 	vita_replace_word(s, "round(", "vgl_round(");
 	vita_replace(s, "sampler2DRect", "sampler2D");
 	vita_replace(s, "texture2DRect(", "vgl_texRect(");
+	vita_replace(s, "vec2 s = vec2(offsetx, offsety);", "vec2 s = vec2(offsetx, offsety) / vgl_RectSize;");
 	vita_replace(s, "gl_ModelViewProjectionMatrix", "vgl_MVP");
 	vita_replace(s, "gl_ModelViewMatrixInverse", "vgl_MVInv");
 	vita_replace(s, "gl_ModelViewMatrix", "vgl_MV");
@@ -223,10 +260,12 @@ static std::string vita_rewrite_shader(const char *str, GLenum type)
 	vita_replace(s, "gl_Fog.density", "vgl_FogDensity");
 	if (type == GL_VERTEX_SHADER)
 		vita_replace(s, "gl_Color", "vgl_Color");
+	vita_replace(s, "gl_ClipVertex", "vgl_EyePos");
 
 	struct decl { const char *name; const char *text; bool vertex_only; };
 	static const decl decls[] = {
 		{ "vgl_Vertex", "attribute vec4 vgl_Vertex;\n", true },
+		{ "vgl_EyePos", "varying vec4 vgl_EyePos;\n", true },
 		{ "vgl_MultiTexCoord0", "attribute vec4 vgl_MultiTexCoord0;\n", true },
 		{ "vgl_MultiTexCoord1", "attribute vec4 vgl_MultiTexCoord1;\n", true },
 		{ "vgl_Color", "attribute vec4 vgl_Color;\n", true },
@@ -240,7 +279,7 @@ static std::string vita_rewrite_shader(const char *str, GLenum type)
 		{ "vgl_FogStart", "uniform float vgl_FogStart;\n", false },
 		{ "vgl_FogEnd", "uniform float vgl_FogEnd;\n", false },
 		{ "vgl_FogDensity", "uniform float vgl_FogDensity;\n", false },
-		{ "vgl_texRect", "uniform vec2 vgl_RectSize;\nvec4 vgl_texRect(sampler2D t, vec2 c) { return texture2D(t, c / vgl_RectSize); }\n", false },
+		{ "vgl_texRect", "uniform vec2 vgl_RectSize;\nvec4 vgl_texRect(sampler2D t, vec2 c) { return texture2D(t, c); }\n", false },
 	};
 	std::string pre;
 	for (const decl &d : decls) {
@@ -260,6 +299,33 @@ static std::string vita_rewrite_shader(const char *str, GLenum type)
 		if (tmp.find("vgl_MV") != std::string::npos)
 			pre += "uniform mat4 vgl_MV;\n";
 	}
+	if (type == GL_FRAGMENT_SHADER) {
+		size_t m = s.find("void main");
+		size_t close = (m == std::string::npos) ? m : s.find(')', m);
+		if (close != std::string::npos) {
+			s.replace(m, close + 1 - m, "void vgl_main(inout vec4 vgl_FragOut)");
+			vita_replace_word(s, "gl_FragColor", "vgl_FragOut");
+			s += "\nuniform float vgl_Gamma;\n";
+			if (vita_alpha_variant) s += "uniform float vgl_AlphaRef;\n";
+			bool clip = vita_alpha_variant && vita_clip_ok;
+			if (clip) s += "varying vec4 vgl_EyePos;\nuniform vec4 vgl_Clip0;\nuniform vec4 vgl_Clip1;\nuniform vec4 vgl_Clip5;\n";
+			s += "void main(void) {\n"
+			     "\tvec4 c = vec4(0.0);\n";
+			if (clip) s += "\tif (dot(vgl_EyePos, vgl_Clip0) < 0.0 || dot(vgl_EyePos, vgl_Clip1) < 0.0 || dot(vgl_EyePos, vgl_Clip5) < 0.0) discard;\n";
+			bool is_wall = s.find("normalize(viewXY)") != std::string::npos;
+			bool is_sky = s.find("relDir") != std::string::npos;
+			if (is_wall && vita_cfg("simplewall", 0))
+				s += "\tc = texture2D(texture0, vgl_TexCoord0.xy) * vertexColor;\n";
+			else if (is_sky && vita_cfg("nosky", 0))
+				s += "\tc = vec4(0.2, 0.2, 0.4, 1.0);\n";
+			else
+				s += "\tvgl_main(c);\n";
+			if (vita_alpha_variant) s += "\tif (c.a <= vgl_AlphaRef) discard;\n";
+			s += "\tif (vgl_Gamma != 1.0) c.rgb = pow(max(c.rgb, vec3(0.0)), vec3(vgl_Gamma));\n"
+			     "\tgl_FragColor = c;\n"
+			     "}\n";
+		}
+	}
 	return pre + s;
 }
 #endif
@@ -273,7 +339,6 @@ GLuint parseShader(const GLchar* str, GLenum shaderType) {
 
 #ifdef __vita__
         std::string vita_src = vita_rewrite_shader(str, shaderType);
-        source.push_back("#define DISABLE_CLIP_VERTEX\n");
 #else
         if (DisableClipVertex()) {
             source.push_back("#define DISABLE_CLIP_VERTEX\n");
@@ -302,7 +367,7 @@ GLuint parseShader(const GLchar* str, GLenum shaderType) {
 #ifdef __vita__
 	{
 		GLint _len = 0; glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &_len);
-		FILE *_f = fopen("ux0:/data/AlephOne/shader_log.txt", "a");
+		FILE *_f = (!status || vita_cfg("shaderlog", 0)) ? fopen("ux0:/data/AlephOne/shader_log.txt", "a") : NULL;
 		if (_f) {
 			fprintf(_f, "=== type=0x%x status=%d loglen=%d ===\n", (unsigned)shaderType, (int)status, (int)_len);
 			if (!status) fprintf(_f, "%s\n", str);
@@ -383,6 +448,9 @@ void Shader::init() {
 
 	_loaded = true;
 
+#ifdef __vita__
+	vita_clip_ok = _vert.find("gl_ClipVertex") != std::string::npos;
+#endif
 	_programObj = glCreateProgram();
 
 	assert(!_vert.empty());
@@ -409,7 +477,7 @@ void Shader::init() {
 #ifdef __vita__
 	{
 		static int vita_link_count = 0;
-		FILE *_f = fopen("ux0:/data/AlephOne/shader_log.txt", "a");
+		FILE *_f = vita_cfg("shaderlog", 0) ? fopen("ux0:/data/AlephOne/shader_log.txt", "a") : NULL;
 		if (_f) {
 			fprintf(_f, "### LINKING program %d\n--- vertex ---\n%s\n--- fragment ---\n%s\n### END\n", vita_link_count++, vita_rewrite_shader(_vert.c_str(), GL_VERTEX_SHADER).c_str(), vita_rewrite_shader(_frag.c_str(), GL_FRAGMENT_SHADER).c_str());
 			fclose(_f);
@@ -429,7 +497,7 @@ void Shader::init() {
     {
         static int vita_prog_count = 0;
         GLint _len = 0; glGetProgramiv(_programObj, GL_INFO_LOG_LENGTH, &_len);
-        FILE *_f = fopen("ux0:/data/AlephOne/shader_log.txt", "a");
+        FILE *_f = (!linked || vita_cfg("shaderlog", 0)) ? fopen("ux0:/data/AlephOne/shader_log.txt", "a") : NULL;
         if (_f) {
             fprintf(_f, "=== program %d linked=%d loglen=%d ===\n", vita_prog_count++, (int)linked, (int)_len);
             if (_len > 1) { char *_b = (char*)malloc(_len); glGetProgramInfoLog(_programObj, _len, NULL, _b); fprintf(_f, "LINK LOG:\n%s\n", _b); free(_b); }
@@ -463,6 +531,41 @@ void Shader::init() {
 
 	glUseProgram(0);
 
+#ifdef __vita__
+	std::fill_n(_uniform_locations_alpha, static_cast<int>(NUMBER_OF_UNIFORM_LOCATIONS), -1);
+	_programObjAlpha = 0;
+	if (_frag.find("relDir") == std::string::npos && _frag.find("sampler2DRect") == std::string::npos) {
+		vita_alpha_variant = true;
+		GLuint vs = parseShader(_vert.c_str(), GL_VERTEX_SHADER);
+		GLuint fs = parseShader(_frag.c_str(), GL_FRAGMENT_SHADER);
+		vita_alpha_variant = false;
+		if (vs && fs) {
+			GLuint p = glCreateProgram();
+			glAttachShader(p, vs);
+			glAttachShader(p, fs);
+			glBindAttribLocation(p, 0, "vgl_Vertex");
+			glBindAttribLocation(p, 1, "vgl_MultiTexCoord0");
+			glBindAttribLocation(p, 2, "vgl_MultiTexCoord1");
+			glBindAttribLocation(p, 3, "vgl_Color");
+			glBindAttribLocation(p, 4, "vgl_Normal");
+			glLinkProgram(p);
+			GLint ok = 0;
+			glGetProgramiv(p, GL_LINK_STATUS, &ok);
+			if (ok) _programObjAlpha = p; else glDeleteProgram(p);
+		}
+		if (vs) glDeleteShader(vs);
+		if (fs) glDeleteShader(fs);
+	}
+	if (_programObjAlpha) {
+		glUseProgram(_programObjAlpha);
+		glUniform1i(getUniformLocationAlpha(U_Texture0), 0);
+		glUniform1i(getUniformLocationAlpha(U_Texture1), 1);
+		glUniform1i(getUniformLocationAlpha(U_Texture2), 2);
+		glUniform1i(getUniformLocationAlpha(U_Texture3), 3);
+		glUseProgram(0);
+	}
+#endif
+
 //	assert(glGetError() == GL_NO_ERROR);
 }
 
@@ -471,12 +574,18 @@ void Shader::setFloat(UniformName name, float f) {
 	if (_cached_floats[name] != f) {
 		_cached_floats[name] = f;
 		glUniform1f(getUniformLocation(name), f);
+#ifdef __vita__
+		if (_programObjAlpha) glUniform1f(getUniformLocationAlpha(name), f);
+#endif
 	}
 }
 
 void Shader::setMatrix4(UniformName name, float *f) {
 
 	glUniformMatrix4fv(getUniformLocation(name), 1, false, f);
+#ifdef __vita__
+	if (_programObjAlpha) glUniformMatrix4fv(getUniformLocationAlpha(name), 1, false, f);
+#endif
 }
 
 Shader::~Shader() {
@@ -486,6 +595,10 @@ Shader::~Shader() {
 void Shader::enable() {
 	if(!_loaded) { init(); }
 	glUseProgram(_programObj);
+#ifdef __vita__
+	vgl_shim_state.alpha_base = _programObj;
+	vgl_shim_state.alpha_twin = _programObjAlpha;
+#endif
 }
 
 void Shader::disable() {
@@ -496,6 +609,9 @@ void Shader::unload() {
 	if(_programObj) {
 		glDeleteProgram(_programObj);
 		_programObj = 0;
+#ifdef __vita__
+		if (_programObjAlpha) { glDeleteProgram(_programObjAlpha); _programObjAlpha = 0; }
+#endif
 		_loaded = false;
 	}
 }
@@ -695,6 +811,55 @@ void initDefaultPrograms() {
     defaultFragmentPrograms["bump_bloom"] =
         #include "Shaders/bump_bloom.frag"
 		;
+
+#ifdef __vita__
+	if (!vita_cfg("origwall", 0)) {
+		defaultVertexPrograms["wall"] = R"(
+uniform float depth;
+uniform float fogMode;
+varying vec4 vertexColor;
+varying float classicDepth;
+varying float fogFactor;
+void main(void) {
+	gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+	gl_Position.z = gl_Position.z + depth*gl_Position.z/65536.0;
+	classicDepth = gl_Position.z / 8192.0;
+	gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;
+	vertexColor = gl_Color;
+	float d = length((gl_ModelViewMatrix * gl_Vertex).xyz);
+	if (fogMode == 0.0) {
+		fogFactor = clamp((gl_Fog.end - d) / (gl_Fog.end - gl_Fog.start), 0.0, 1.0);
+	} else if (fogMode == 1.0) {
+		fogFactor = clamp(exp(-gl_Fog.density * d), 0.0, 1.0);
+	} else if (fogMode == 2.0) {
+		fogFactor = clamp(exp(-gl_Fog.density * gl_Fog.density * d * d), 0.0, 1.0);
+	} else {
+		fogFactor = 1.0;
+	}
+}
+)";
+		defaultFragmentPrograms["wall"] = R"(
+uniform sampler2D texture0;
+uniform float glow;
+uniform float flare;
+uniform float selfLuminosity;
+varying vec4 vertexColor;
+varying float classicDepth;
+varying float fogFactor;
+void main(void) {
+	vec4 color = texture2D(texture0, gl_TexCoord[0].xy);
+	float mlFactor = clamp(selfLuminosity + flare - classicDepth, 0.0, 1.0);
+	vec3 brighter = vertexColor.rgb + (mlFactor * 0.5);
+	vec3 darker = (vertexColor.rgb * 0.5) + mlFactor;
+	vec3 intensity = clamp(mix(darker, brighter, step(mlFactor, vertexColor.r)), glow, 1.0);
+#ifdef GAMMA_CORRECTED_BLENDING
+	intensity = intensity * intensity;
+#endif
+	gl_FragColor = vec4(mix(gl_Fog.color.rgb, color.rgb * intensity, fogFactor), vertexColor.a * color.a);
+}
+)";
+	}
+#endif
 
 	defaultVertexPrograms["landscape_sphere"] =
 		#include "Shaders/landscape_sphere.vert"

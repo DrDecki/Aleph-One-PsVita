@@ -173,7 +173,9 @@ void FontSpecifier::OGL_Reset(bool IsStarting)
 	if (!IsStarting && OGL_Texture)
 	{
 		glDeleteTextures(1,&TxtrID);
+#ifndef __vita__
 		glDeleteLists(DispList,256);
+#endif
 		OGL_Deregister(this);
 	}
 
@@ -295,7 +297,13 @@ void FontSpecifier::OGL_Reset(bool IsStarting)
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	
  	// Allocate and create display lists of rendering commands
- 	DispList = glGenLists(256);
+#ifdef __vita__
+	memset(VitaHas, 0, sizeof(VitaHas));
+	VitaAscent = ascent_p;
+	VitaHeight = descent_p + ascent_p;
+#else
+	DispList = glGenLists(256);
+#endif
  	GLfloat TWidNorm = GLfloat(1)/TxtrWidth;
  	GLfloat THtNorm = GLfloat(1)/TxtrHeight;
  	for (int k=0; k<=LastLine; k++)
@@ -311,19 +319,19 @@ void FontSpecifier::OGL_Reset(bool IsStarting)
  			GLfloat Left = TWidNorm*Pos;
  			GLfloat Right = TWidNorm*NewPos;
  			
- 			glNewList(DispList + Which, GL_COMPILE);
- 			
- 			// Move to the current glyph's (padded) position
- 			glTranslatef(-Pad,0,0);
- 			
- 			// Draw the glyph rectangle
+#ifdef __vita__
+			VitaGlyph[Which][0] = Left; VitaGlyph[Which][1] = Top;
+			VitaGlyph[Which][2] = Right; VitaGlyph[Which][3] = Bottom;
+			VitaWidth[Which] = Width;
+			VitaHas[Which] = true;
+#else
+			glNewList(DispList + Which, GL_COMPILE);
+			glTranslatef(-Pad,0,0);
 			OGL_RenderTexturedRect(0, -ascent_p, Width, descent_p + ascent_p,
 								   Left, Top, Right, Bottom);
-			
-			// Move to the next glyph's position
 			glTranslated(Width-Pad,0,0);
-			
- 			glEndList();
+			glEndList();
+#endif
  			
  			// For next one
  			Pos = NewPos;
@@ -359,7 +367,16 @@ void FontSpecifier::OGL_Render(const char *Text)
 	for (size_t k=0; k<Len; k++)
 	{
 		unsigned char c = Text[k];
+#ifdef __vita__
+		if (VitaHas[c]) {
+			glTranslatef(-1,0,0);
+			OGL_RenderTexturedRect(0, -VitaAscent, VitaWidth[c], VitaHeight,
+				VitaGlyph[c][0], VitaGlyph[c][1], VitaGlyph[c][2], VitaGlyph[c][3]);
+			glTranslatef(VitaWidth[c]-1,0,0);
+		}
+#else
 		glCallList(DispList+c);
+#endif
 	}
 	
 	glPopAttrib();
